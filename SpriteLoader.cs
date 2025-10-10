@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -7,6 +8,8 @@ namespace Patchwork;
 public static class SpriteLoader
 {
     public static string LoadPath { get { return Path.Combine(Plugin.Config.DataBasePath, "load"); } }
+
+    private static readonly Dictionary<string, Texture2D> BuiltAtlases = new();
 
     public static void LoadCollection(tk2dSpriteCollectionData collection)
     {
@@ -18,8 +21,15 @@ public static class SpriteLoader
         foreach (var mat in collection.materials)
         {
             string matname = mat.name.Split(' ')[0];
-            if(!Directory.Exists(Path.Combine(LoadPath, collection.name, matname)))
+            if (!Directory.Exists(Path.Combine(LoadPath, collection.name, matname)))
                 continue;
+            
+            if (BuiltAtlases.TryGetValue(matname, out Texture2D cachedTex) && Plugin.Config.CacheAtlases)
+            {
+                mat.mainTexture = cachedTex;
+                Plugin.Logger.LogInfo($"Loaded cached atlas for collection {collection.name}, material {matname}");
+                continue;
+            }
 
             Texture matTex = mat.mainTexture;
             if (matTex.width == 0 || matTex.height == 0)
@@ -56,6 +66,9 @@ public static class SpriteLoader
                 rawTex.Apply();
             }
 
+            if (Plugin.Config.CacheAtlases)
+                BuiltAtlases[matname] = rawTex;
+                
             mat.mainTexture = rawTex;
             Plugin.Logger.LogInfo($"Loaded sprites for collection {collection.name}, material {matname}");
         }
