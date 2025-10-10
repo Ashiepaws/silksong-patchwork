@@ -10,6 +10,7 @@ public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
     internal static new PatchworkConfig Config;
+    internal static SpriteFileWatcher FileWatcher;
         
     private void Awake()
     {
@@ -17,6 +18,8 @@ public class Plugin : BaseUnityPlugin
         Logger = base.Logger;
         Config = new PatchworkConfig(base.Config);
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+
+        FileWatcher = new SpriteFileWatcher(); // Needs config to be initialized first
 
         if (Config.DumpSprites)
         {

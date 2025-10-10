@@ -15,7 +15,7 @@ public static class SpriteLoader
     {
         IOUtil.EnsureDirectoryExists(LoadPath);
 
-        if(!Directory.Exists(Path.Combine(LoadPath, collection.name)))
+        if (!Directory.Exists(Path.Combine(LoadPath, collection.name)))
             return;
 
         foreach (var mat in collection.materials)
@@ -23,8 +23,8 @@ public static class SpriteLoader
             string matname = mat.name.Split(' ')[0];
             if (!Directory.Exists(Path.Combine(LoadPath, collection.name, matname)))
                 continue;
-            
-            if (BuiltAtlases.TryGetValue(matname, out Texture2D cachedTex) && Plugin.Config.CacheAtlases)
+
+            if (BuiltAtlases.TryGetValue(collection.name + matname, out Texture2D cachedTex) && Plugin.Config.CacheAtlases)
             {
                 mat.mainTexture = cachedTex;
                 Plugin.Logger.LogInfo($"Loaded cached atlas for collection {collection.name}, material {matname}");
@@ -68,9 +68,14 @@ public static class SpriteLoader
 
             if (Plugin.Config.CacheAtlases)
                 BuiltAtlases[matname] = rawTex;
-                
+
             mat.mainTexture = rawTex;
             Plugin.Logger.LogInfo($"Loaded sprites for collection {collection.name}, material {matname}");
         }
+    }
+    
+    public static void InvalidateCacheEntry(string collectionName, string materialName)
+    {
+        BuiltAtlases.Remove(collectionName + materialName);
     }
 }
