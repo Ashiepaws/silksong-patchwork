@@ -1,5 +1,7 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Patchwork;
 
@@ -7,11 +9,25 @@ namespace Patchwork;
 public class Plugin : BaseUnityPlugin
 {
     internal static new ManualLogSource Logger;
+    internal static new PatchworkConfig Config;
         
     private void Awake()
     {
         // Plugin startup logic
         Logger = base.Logger;
+        Config = new PatchworkConfig(base.Config);
         Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+
+        // Dump sprites on load
+        if (Config.DumpSprites)
+        {
+            SceneManager.sceneLoaded += (scene, mode) =>
+            {
+                var spriteCollections = Resources.FindObjectsOfTypeAll<tk2dSpriteCollectionData>();
+                Logger.LogInfo($"Found {spriteCollections.Length} sprite collections.");
+                foreach (var collection in spriteCollections)
+                    SpriteDumper.DumpCollection(collection);
+            };
+        }
     }
 }
