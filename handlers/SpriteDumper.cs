@@ -1,10 +1,12 @@
 using System.IO;
 using System.Linq;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace Patchwork;
 
+/// <summary>
+/// Handles dumping of sprites from sprite collections to individual PNG files.
+/// </summary>
 public static class SpriteDumper
 {
     public static string DumpPath { get { return Path.Combine(Plugin.Config.DataBasePath, "Dumps"); } }

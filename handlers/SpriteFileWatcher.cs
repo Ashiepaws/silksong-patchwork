@@ -3,6 +3,9 @@ using UnityEngine.SceneManagement;
 
 namespace Patchwork;
 
+/// <summary>
+/// Watches the sprite load directory for changes and invalidates cache entries accordingly.
+/// </summary>
 public class SpriteFileWatcher
 {
     public FileSystemWatcher Watcher;
@@ -19,6 +22,8 @@ public class SpriteFileWatcher
         Watcher.Deleted += OnChanged;
         Watcher.Renamed += (s, e) => OnChanged(s, e);
         Watcher.EnableRaisingEvents = true;
+
+        // TODO: Watch spritesheets directory
     }
 
     private void OnChanged(object sender, FileSystemEventArgs e)
