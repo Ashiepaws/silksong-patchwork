@@ -7,7 +7,7 @@ namespace Patchwork;
 
 public static class SpriteLoader
 {
-    public static string LoadPath { get { return Path.Combine(Plugin.Config.DataBasePath, "load"); } }
+    public static string LoadPath { get { return Path.Combine(Plugin.Config.DataBasePath, "Sprites"); } }
 
     private static readonly Dictionary<string, Texture2D> BuiltAtlases = new();
 
