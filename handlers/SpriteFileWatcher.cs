@@ -43,8 +43,8 @@ public class SpriteFileWatcher
         if (pathParts.Length < 3)
             return;
 
-        string collectionName = pathParts[0];
-        string materialName = pathParts[1];
+        string collectionName = pathParts[pathParts.Length - 3];
+        string materialName = pathParts[pathParts.Length - 2];
 
         SpriteLoader.InvalidateCacheEntry(collectionName, materialName);
         Plugin.Logger.LogDebug($"Invalidated cache for collection {collectionName}, material {materialName} due to file change: {e.ChangeType} {e.FullPath}");
@@ -60,7 +60,7 @@ public class SpriteFileWatcher
         if (pathParts.Length < 2)
             return;
 
-        string collectionName = pathParts[0];
+        string collectionName = pathParts[pathParts.Length - 3];
         string materialName = Path.GetFileNameWithoutExtension(pathParts[1]);
 
         SpriteLoader.InvalidateCacheEntry(collectionName, materialName);
