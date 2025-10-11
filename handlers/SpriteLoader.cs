@@ -88,7 +88,7 @@ public static class SpriteLoader
 
             // Cache the built atlas if enabled
             if (Plugin.Config.CacheAtlases)
-                BuiltAtlases[matname] = rawTex;
+                BuiltAtlases[collection.name + matname] = rawTex;
 
             // Apply the built texture to the material
             mat.mainTexture = rawTex;
