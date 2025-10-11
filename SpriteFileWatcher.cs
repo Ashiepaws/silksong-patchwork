@@ -1,4 +1,5 @@
 using System.IO;
+using UnityEngine.SceneManagement;
 
 namespace Patchwork;
 
@@ -32,5 +33,8 @@ public class SpriteFileWatcher
 
         SpriteLoader.InvalidateCacheEntry(collectionName, materialName);
         Plugin.Logger.LogInfo($"Invalidated cache for collection {collectionName}, material {materialName} due to file change: {e.ChangeType} {e.FullPath}");
+
+        if (Plugin.Config.ReloadSceneOnChange)
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }
