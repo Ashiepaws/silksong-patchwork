@@ -1,3 +1,4 @@
+using System.IO;
 using UnityEngine;
 
 namespace Patchwork;
@@ -67,5 +68,23 @@ public static class TexUtil
         }
         rotated.Apply();
         return rotated;
+    }
+
+    public static Texture2D LoadFromPNG(string path)
+    {
+        if (!File.Exists(path))
+        {
+            Plugin.Logger.LogWarning($"LoadFromPNG: File {path} does not exist");
+            return null;
+        }
+
+        byte[] pngData = File.ReadAllBytes(path);
+        Texture2D tex = new(2, 2, TextureFormat.RGBA32, false);
+        if (!tex.LoadImage(pngData))
+        {
+            Plugin.Logger.LogWarning($"LoadFromPNG: Failed to load image from {path}");
+            return null;
+        }
+        return tex;
     }
 }

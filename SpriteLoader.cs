@@ -8,20 +8,22 @@ namespace Patchwork;
 public static class SpriteLoader
 {
     public static string LoadPath { get { return Path.Combine(Plugin.Config.DataBasePath, "Sprites"); } }
+    public static string AtlasLoadPath { get { return Path.Combine(Plugin.Config.DataBasePath, "Spritesheets"); } }
 
     private static readonly Dictionary<string, Texture2D> BuiltAtlases = new();
 
     public static void LoadCollection(tk2dSpriteCollectionData collection)
     {
         IOUtil.EnsureDirectoryExists(LoadPath);
+        IOUtil.EnsureDirectoryExists(AtlasLoadPath);
 
-        if (!Directory.Exists(Path.Combine(LoadPath, collection.name)))
+        if (!Directory.Exists(Path.Combine(LoadPath, collection.name)) && !Directory.Exists(Path.Combine(AtlasLoadPath, collection.name)))
             return;
 
         foreach (var mat in collection.materials)
         {
             string matname = mat.name.Split(' ')[0];
-            if (!Directory.Exists(Path.Combine(LoadPath, collection.name, matname)))
+            if (!Directory.Exists(Path.Combine(LoadPath, collection.name, matname)) && !File.Exists(Path.Combine(AtlasLoadPath, collection.name, matname + ".png")))
                 continue;
 
             if (BuiltAtlases.TryGetValue(collection.name + matname, out Texture2D cachedTex) && Plugin.Config.CacheAtlases)
@@ -37,7 +39,9 @@ public static class SpriteLoader
                 Plugin.Logger.LogWarning($"Skipping material {mat.name} with invalid texture size {matTex.width}x{matTex.height}");
                 continue;
             }
-            Texture2D rawTex = TexUtil.TransferFromGPU(matTex);
+
+            bool spritesheetExists = File.Exists(Path.Combine(AtlasLoadPath, collection.name, matname + ".png"));
+            Texture2D rawTex = spritesheetExists ? TexUtil.LoadFromPNG(Path.Combine(AtlasLoadPath, collection.name, matname + ".png")) : TexUtil.TransferFromGPU(matTex);
             tk2dSpriteDefinition[] spriteDefinitions = [.. collection.spriteDefinitions.Where(def => def.material == mat)];
 
             foreach (var def in spriteDefinitions)
