@@ -28,6 +28,7 @@ public class Plugin : BaseUnityPlugin
                 var spriteCollections = Resources.FindObjectsOfTypeAll<tk2dSpriteCollectionData>();
                 foreach (var collection in spriteCollections)
                     SpriteDumper.DumpCollection(collection);
+                SceneTraverser.OnDumpCompleted();
             };
         }
 
@@ -45,9 +46,9 @@ public class Plugin : BaseUnityPlugin
     private void Update()
     {
         if (Input.GetKeyDown(Config.ForceReloadKey) && Config.EnableForceReload)
-        {
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-            Logger.LogInfo("Force reloaded current scene due to key press");
-        }
+
+        if (Input.GetKeyDown(Config.FullDumpKey) && Config.DumpSprites)
+            SceneTraverser.TraverseAllScenes();
     }
 }

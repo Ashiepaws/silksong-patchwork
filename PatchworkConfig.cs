@@ -25,10 +25,13 @@ public class PatchworkConfig
     private readonly ConfigEntry<UnityEngine.KeyCode> _ForceReloadKey = null;
     public UnityEngine.KeyCode ForceReloadKey { get { return _ForceReloadKey.Value; } }
 
+    private readonly ConfigEntry<UnityEngine.KeyCode> _FullDumpKey = null;
+    public UnityEngine.KeyCode FullDumpKey { get { return _FullDumpKey.Value; } }
+
     public PatchworkConfig(ConfigFile config)
     {
         _DataBasePath = config.Bind("Paths", "PatchworkFolder", "Patchwork", "Path to the folder for all Patchwork-related files, including dumps and modded sprites, relative to the game folder.");
-        
+
         _DumpSprites = config.Bind("General", "DumpSprites", false, "Enable dumping of sprites");
         _LoadSprites = config.Bind("General", "LoadSprites", true, "Enable loading of custom sprites");
 
@@ -36,6 +39,8 @@ public class PatchworkConfig
 
         _ReloadSceneOnChange = config.Bind("Reloading", "ReloadSceneOnChange", false, "Enable automatic scene reload when a sprite file changes. May cause instability.");
         _EnableForceReload = config.Bind("Reloading", "EnableForceReload", false, "Enable the ability to force reload the current scene with a key press.");
-        _ForceReloadKey = config.Bind("Reloading", "ForceReloadKey", UnityEngine.KeyCode.F5, "Key to force reload all sprite collections");
+
+        _ForceReloadKey = config.Bind("Keybinds", "ForceReloadKey", UnityEngine.KeyCode.F5, "Key to force reload all sprite collections");
+        _FullDumpKey = config.Bind("Keybinds", "FullDumpKey", UnityEngine.KeyCode.F6, "Key to load all scenes in the game and dump all their sprites. Only works when DumpSprites is enabled.");
     }
 }

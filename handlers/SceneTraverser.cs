@@ -1,0 +1,45 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.SceneManagement;
+
+namespace Patchwork;
+
+public static class SceneTraverser
+{
+    private static Queue<string> sceneQueue = new();
+
+    public static void TraverseAllScenes()
+    {
+        Plugin.Logger.LogInfo("Starting scene traversal for full sprite dump...");
+        sceneQueue.Clear();
+
+        var teleportMap = SceneTeleportMap.GetTeleportMap();
+        foreach (var sceneName in teleportMap.Keys)
+        {
+            if (!sceneQueue.Contains(sceneName) && teleportMap[sceneName].MapZone != GlobalEnums.MapZone.NONE)
+            {
+                Plugin.Logger.LogInfo($"Enqueued scene: {sceneName} : {teleportMap[sceneName].MapZone}");
+                sceneQueue.Enqueue(sceneName);
+            }
+        }
+
+        LoadNextScene();
+    }
+
+    public static void OnDumpCompleted()
+    {
+        Plugin.Logger.LogInfo($"Completed dump of scene: {SceneManager.GetActiveScene().name}");
+        LoadNextScene();
+    }
+
+    private static bool LoadNextScene()
+    {
+        if (sceneQueue.Count > 0)
+        {
+            string nextScene = sceneQueue.Dequeue();
+            GameManager.instance.LoadScene(nextScene);
+            return true;
+        }
+        return false;
+    }
+}

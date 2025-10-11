@@ -17,6 +17,11 @@ public static class SpriteDumper
 
         foreach (var mat in collection.materials)
         {
+            if (mat == null || mat.mainTexture == null)
+            {
+                Plugin.Logger.LogWarning($"Skipping null material or material with null texture in collection {collection.name}");
+                continue;
+            }
             Texture matTex = mat.mainTexture;
             if (matTex.width == 0 || matTex.height == 0)
             {
@@ -30,6 +35,12 @@ public static class SpriteDumper
 
             foreach (var def in spriteDefinitions)
             {
+                if (File.Exists(Path.Combine(DumpPath, collection.name, matname, def.name + ".png")))
+                {
+                    Plugin.Logger.LogInfo($"Sprite {def.name} from collection {collection.name}, material {matname} already dumped, skipping.");
+                    continue;
+                }
+
                 var spriteTex = TexUtil.GetCutout(rawTex, SpriteUtil.GetSpriteRect(def, rawTex));
                 if (spriteTex == null)
                 {
