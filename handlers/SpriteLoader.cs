@@ -40,7 +40,6 @@ public static class SpriteLoader
                 BuiltAtlases.Remove(collection.name + matname);
                 InvalidatedAtlases.Remove(collection.name + matname);
                 mat.mainTexture = VanillaAtlases[collection.name + matname];
-                Plugin.Logger.LogInfo($"Cache entry for collection {collection.name}, material {matname} was invalidated, rebuilding atlas");
             }
         }
 
@@ -60,7 +59,7 @@ public static class SpriteLoader
             if (BuiltAtlases.TryGetValue(collection.name + matname, out Texture2D cachedTex) && Plugin.Config.CacheAtlases)
             {
                 mat.mainTexture = cachedTex;
-                Plugin.Logger.LogInfo($"Loaded cached atlas for collection {collection.name}, material {matname}");
+                Plugin.Logger.LogDebug($"Loaded cached atlas for collection {collection.name}, material {matname}");
                 continue;
             }
 
@@ -111,7 +110,7 @@ public static class SpriteLoader
 
             // Apply the built texture to the material
             mat.mainTexture = rawTex;
-            Plugin.Logger.LogInfo($"Loaded sprites for collection {collection.name}, material {matname}");
+            Plugin.Logger.LogDebug($"Loaded sprites for collection {collection.name}, material {matname}");
         }
     }
 

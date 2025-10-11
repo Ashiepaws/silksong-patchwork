@@ -17,7 +17,7 @@ public class Plugin : BaseUnityPlugin
         // Plugin startup logic
         Logger = base.Logger;
         Config = new PatchworkConfig(base.Config);
-        Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+        Logger.LogInfo($"Patchwork is loaded! Version: {MyPluginInfo.PLUGIN_VERSION}");
 
         FileWatcher = new SpriteFileWatcher(); // Needs config to be initialized first
 
