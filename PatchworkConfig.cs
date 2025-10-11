@@ -22,9 +22,9 @@ public class PatchworkConfig
     public PatchworkConfig(ConfigFile config)
     {
         _DataBasePath = config.Bind("General", "PatchworkFolder", "Patchwork", "Path to the folder for all Patchwork-related files, including dumps and modded sprites, relative to the game folder.");
-        _DumpSprites = config.Bind("General", "DumpSprites", true, "Enable dumping of sprites");
+        _DumpSprites = config.Bind("General", "DumpSprites", false, "Enable dumping of sprites");
         _LoadSprites = config.Bind("General", "LoadSprites", true, "Enable loading of custom sprites");
         _CacheAtlases = config.Bind("General", "CacheAtlases", true, "Enable caching of sprite atlases in memory to speed up sprite loading");
-        _ReloadSceneOnChange = config.Bind("General", "ReloadSceneOnChange", true, "Enable automatic scene reload when a sprite file changes. May cause instability.");
+        _ReloadSceneOnChange = config.Bind("General", "ReloadSceneOnChange", false, "Enable automatic scene reload when a sprite file changes. May cause instability.");
     }
 }
