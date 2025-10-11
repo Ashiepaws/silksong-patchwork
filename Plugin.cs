@@ -11,7 +11,7 @@ public class Plugin : BaseUnityPlugin
     internal static new ManualLogSource Logger;
     internal static new PatchworkConfig Config;
     internal static SpriteFileWatcher FileWatcher;
-        
+
     private void Awake()
     {
         // Plugin startup logic
@@ -39,6 +39,15 @@ public class Plugin : BaseUnityPlugin
                 foreach (var collection in spriteCollections)
                     SpriteLoader.LoadCollection(collection);
             };
+        }
+    }
+    
+    private void Update()
+    {
+        if (Input.GetKeyDown(Config.ForceReloadKey) && Config.EnableForceReload)
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            Logger.LogInfo("Force reloaded current scene due to key press");
         }
     }
 }
