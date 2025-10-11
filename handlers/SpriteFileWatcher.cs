@@ -50,7 +50,7 @@ public class SpriteFileWatcher
         Plugin.Logger.LogDebug($"Invalidated cache for collection {collectionName}, material {materialName} due to file change: {e.ChangeType} {e.FullPath}");
 
         if (Plugin.Config.ReloadSceneOnChange)
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            GameManager.instance.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     private void OnAtlasChanged(object sender, FileSystemEventArgs e)
@@ -67,6 +67,6 @@ public class SpriteFileWatcher
         Plugin.Logger.LogDebug($"Invalidated cache for collection {collectionName}, material {materialName} due to atlas change: {e.ChangeType} {e.FullPath}");
 
         if (Plugin.Config.ReloadSceneOnChange)
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            GameManager.instance.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

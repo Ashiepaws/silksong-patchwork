@@ -50,7 +50,7 @@ public class Plugin : BaseUnityPlugin
     private void Update()
     {
         if (Input.GetKeyDown(Config.ForceReloadKey) && Config.EnableForceReload)
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            GameManager.instance.LoadScene(SceneManager.GetActiveScene().name);
 
         if (Input.GetKeyDown(Config.FullDumpKey) && Config.DumpSprites)
             SceneTraverser.TraverseAllScenes();
