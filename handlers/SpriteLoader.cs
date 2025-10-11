@@ -114,6 +114,9 @@ public static class SpriteLoader
         }
     }
 
+    /// <summary>
+    /// Caches the vanilla atlas texture for the given collection and material.
+    /// </summary>
     private static void StoreVanillaAtlas(tk2dSpriteCollectionData collection, string materialName)
     {
         if (VanillaAtlases.ContainsKey(collection.name + materialName))
