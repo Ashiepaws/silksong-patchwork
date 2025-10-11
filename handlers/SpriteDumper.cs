@@ -19,13 +19,13 @@ public static class SpriteDumper
         {
             if (mat == null || mat.mainTexture == null)
             {
-                Plugin.Logger.LogWarning($"Skipping null material or material with null texture in collection {collection.name}");
+                if (Plugin.Config.LogSpriteWarnings) Plugin.Logger.LogWarning($"Skipping null material or material with null texture in collection {collection.name}");
                 continue;
             }
             Texture matTex = mat.mainTexture;
             if (matTex.width == 0 || matTex.height == 0)
             {
-                Plugin.Logger.LogWarning($"Skipping material {mat.name} with invalid texture size {matTex.width}x{matTex.height}");
+                if (Plugin.Config.LogSpriteWarnings) Plugin.Logger.LogWarning($"Skipping material {mat.name} with invalid texture size {matTex.width}x{matTex.height}");
                 continue;
             }
             Texture2D rawTex = TexUtil.TransferFromGPU(matTex);
@@ -37,14 +37,14 @@ public static class SpriteDumper
             {
                 if (File.Exists(Path.Combine(DumpPath, collection.name, matname, def.name + ".png")))
                 {
-                    Plugin.Logger.LogInfo($"Sprite {def.name} from collection {collection.name}, material {matname} already dumped, skipping.");
+                    if (Plugin.Config.LogSpriteWarnings) Plugin.Logger.LogWarning($"Sprite {def.name} from collection {collection.name}, material {matname} already dumped, skipping.");
                     continue;
                 }
 
                 var spriteTex = TexUtil.GetCutout(rawTex, SpriteUtil.GetSpriteRect(def, rawTex));
                 if (spriteTex == null)
                 {
-                    Plugin.Logger.LogWarning($"Failed to extract sprite {def.name} from material {matname}");
+                    if (Plugin.Config.LogSpriteWarnings) Plugin.Logger.LogWarning($"Failed to extract sprite {def.name} from material {matname}");
                     continue;
                 }
 
@@ -56,7 +56,8 @@ public static class SpriteDumper
                 var png = spriteTex.EncodeToPNG();
                 IOUtil.EnsureDirectoryExists(Path.Combine(DumpPath, collection.name, matname));
                 File.WriteAllBytes(Path.Combine(DumpPath, collection.name, matname, def.name + ".png"), png);
-                Plugin.Logger.LogInfo($"Dumped sprite {def.name} from collection {collection.name}, material {matname}");
+
+                if (Plugin.Config.LogSpriteDumping) Plugin.Logger.LogInfo($"Dumped sprite {def.name} from collection {collection.name}, material {matname}");
             }
         }
     }

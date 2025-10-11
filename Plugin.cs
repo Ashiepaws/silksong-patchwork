@@ -25,10 +25,12 @@ public class Plugin : BaseUnityPlugin
         {
             SceneManager.sceneLoaded += (scene, mode) =>
             {
+                Logger.LogInfo($"Dumping sprites for scene {scene.name}");
                 var spriteCollections = Resources.FindObjectsOfTypeAll<tk2dSpriteCollectionData>();
                 foreach (var collection in spriteCollections)
                     SpriteDumper.DumpCollection(collection);
                 SceneTraverser.OnDumpCompleted();
+                Logger.LogInfo($"Finished dumping sprites for scene {scene.name}");
             };
         }
 
@@ -36,9 +38,11 @@ public class Plugin : BaseUnityPlugin
         {
             SceneManager.sceneLoaded += (scene, mode) =>
             {
+                Logger.LogInfo($"Loading sprites for scene {scene.name}");
                 var spriteCollections = Resources.FindObjectsOfTypeAll<tk2dSpriteCollectionData>();
                 foreach (var collection in spriteCollections)
                     SpriteLoader.LoadCollection(collection);
+                Logger.LogInfo($"Finished loading sprites for scene {scene.name}");
             };
         }
     }

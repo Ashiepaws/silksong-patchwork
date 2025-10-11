@@ -37,7 +37,7 @@ public static class SpriteLoader
             if (BuiltAtlases.TryGetValue(collection.name + matname, out Texture2D cachedTex) && Plugin.Config.CacheAtlases)
             {
                 mat.mainTexture = cachedTex;
-                Plugin.Logger.LogDebug($"Loaded cached atlas for collection {collection.name}, material {matname}");
+                if (Plugin.Config.LogSpriteLoading) Plugin.Logger.LogInfo($"Loaded cached atlas for collection {collection.name}, material {matname}");
                 continue;
             }
 
@@ -69,7 +69,7 @@ public static class SpriteLoader
 
             // Apply the built texture to the material
             mat.mainTexture = baseTex;
-            Plugin.Logger.LogDebug($"Loaded sprites for collection {collection.name}, material {matname}");
+            if (Plugin.Config.LogSpriteLoading) Plugin.Logger.LogInfo($"Loaded sprites for collection {collection.name}, material {matname}");
         }
     }
 

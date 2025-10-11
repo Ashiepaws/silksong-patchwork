@@ -22,12 +22,12 @@ public static class TexUtil
     {
         if (rect.x < 0 || rect.y < 0 || rect.x + rect.width > source.width || rect.y + rect.height > source.height)
         {
-            Plugin.Logger.LogWarning($"GetCutout: Rect {rect} is out of bounds for texture size {source.width}x{source.height}");
+            if (Plugin.Config.LogSpriteWarnings) Plugin.Logger.LogWarning($"GetCutout: Rect {rect} is out of bounds for texture size {source.width}x{source.height}");
             return null;
         }
         if (rect.width <= 0 || rect.height <= 0)
         {
-            Plugin.Logger.LogWarning($"GetCutout: Rect {rect} has non-positive dimensions");
+            if (Plugin.Config.LogSpriteWarnings) Plugin.Logger.LogWarning($"GetCutout: Rect {rect} has non-positive dimensions");
             return null;
         }
 

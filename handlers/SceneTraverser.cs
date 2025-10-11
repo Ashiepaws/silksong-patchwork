@@ -28,7 +28,6 @@ public static class SceneTraverser
 
     public static void OnDumpCompleted()
     {
-        Plugin.Logger.LogInfo($"Completed dump of scene: {SceneManager.GetActiveScene().name}");
         LoadNextScene();
     }
 
