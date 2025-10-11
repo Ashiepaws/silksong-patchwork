@@ -14,6 +14,7 @@ public static class SpriteLoader
     public static string AtlasLoadPath { get { return Path.Combine(Plugin.Config.DataBasePath, "Spritesheets"); } }
 
     private static readonly Dictionary<string, Texture2D> BuiltAtlases = new();
+    private static readonly Dictionary<string, Texture2D> VanillaAtlases = new();
 
     /// <summary>
     /// Loads sprites for the given sprite collection from individual PNG files.
@@ -52,7 +53,7 @@ public static class SpriteLoader
                 continue;
             }
             bool spritesheetExists = File.Exists(Path.Combine(AtlasLoadPath, collection.name, matname + ".png"));
-            Texture2D rawTex = spritesheetExists ? TexUtil.LoadFromPNG(Path.Combine(AtlasLoadPath, collection.name, matname + ".png")) : TexUtil.TransferFromGPU(matTex);
+            Texture2D rawTex = spritesheetExists ? TexUtil.LoadFromPNG(Path.Combine(AtlasLoadPath, collection.name, matname + ".png")) : GetVanillaAtlas(collection, matname);
 
             // Load and apply each sprite from file if it exists
             tk2dSpriteDefinition[] spriteDefinitions = [.. collection.spriteDefinitions.Where(def => def.material == mat)];
@@ -93,6 +94,20 @@ public static class SpriteLoader
             mat.mainTexture = rawTex;
             Plugin.Logger.LogInfo($"Loaded sprites for collection {collection.name}, material {matname}");
         }
+    }
+
+    /// <summary>
+    /// Gets the vanilla atlas texture for the given collection and material, caching it for future use
+    /// </summary>
+    private static Texture2D GetVanillaAtlas(tk2dSpriteCollectionData collection, string materialName)
+    {
+        if (VanillaAtlases.TryGetValue(collection.name + materialName, out Texture2D cachedTex))
+            return cachedTex;
+        var mat = collection.materials.FirstOrDefault(m => m.name.StartsWith(materialName + " "));
+        var tex = TexUtil.TransferFromGPU(mat?.mainTexture);
+        if (tex != null)
+            VanillaAtlases[collection.name + materialName] = tex;
+        return tex;
     }
 
     /// <summary>

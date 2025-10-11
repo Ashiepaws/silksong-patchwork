@@ -8,25 +8,35 @@ namespace Patchwork;
 /// </summary>
 public class SpriteFileWatcher
 {
-    public FileSystemWatcher Watcher;
+    public FileSystemWatcher SpriteWatcher;
+    public FileSystemWatcher AtlasWatcher;
 
     public SpriteFileWatcher()
     {
-        Watcher = new FileSystemWatcher();
-        Watcher.Path = SpriteLoader.LoadPath;
-        Watcher.IncludeSubdirectories = true;
-        Watcher.Filter = "*.png";
-        Watcher.NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName;
-        Watcher.Changed += OnChanged;
-        Watcher.Created += OnChanged;
-        Watcher.Deleted += OnChanged;
-        Watcher.Renamed += (s, e) => OnChanged(s, e);
-        Watcher.EnableRaisingEvents = true;
+        SpriteWatcher = new FileSystemWatcher();
+        SpriteWatcher.Path = SpriteLoader.LoadPath;
+        SpriteWatcher.IncludeSubdirectories = true;
+        SpriteWatcher.Filter = "*.png";
+        SpriteWatcher.NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName;
+        SpriteWatcher.Changed += OnSpriteChanged;
+        SpriteWatcher.Created += OnSpriteChanged;
+        SpriteWatcher.Deleted += OnSpriteChanged;
+        SpriteWatcher.Renamed += (s, e) => OnSpriteChanged(s, e);
+        SpriteWatcher.EnableRaisingEvents = true;
 
-        // TODO: Watch spritesheets directory
+        AtlasWatcher = new FileSystemWatcher();
+        AtlasWatcher.Path = SpriteLoader.AtlasLoadPath;
+        AtlasWatcher.IncludeSubdirectories = true;
+        AtlasWatcher.Filter = "*.png";
+        AtlasWatcher.NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName;
+        AtlasWatcher.Changed += OnAtlasChanged;
+        AtlasWatcher.Created += OnAtlasChanged;
+        AtlasWatcher.Deleted += OnAtlasChanged;
+        AtlasWatcher.Renamed += (s, e) => OnAtlasChanged(s, e);
+        AtlasWatcher.EnableRaisingEvents = true;
     }
 
-    private void OnChanged(object sender, FileSystemEventArgs e)
+    private void OnSpriteChanged(object sender, FileSystemEventArgs e)
     {
         string relativePath = Path.GetRelativePath(SpriteLoader.LoadPath, e.FullPath);
         string[] pathParts = relativePath.Split(Path.DirectorySeparatorChar);
@@ -38,6 +48,23 @@ public class SpriteFileWatcher
 
         SpriteLoader.InvalidateCacheEntry(collectionName, materialName);
         Plugin.Logger.LogInfo($"Invalidated cache for collection {collectionName}, material {materialName} due to file change: {e.ChangeType} {e.FullPath}");
+
+        if (Plugin.Config.ReloadSceneOnChange)
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    private void OnAtlasChanged(object sender, FileSystemEventArgs e)
+    {
+        string relativePath = Path.GetRelativePath(SpriteLoader.AtlasLoadPath, e.FullPath);
+        string[] pathParts = relativePath.Split(Path.DirectorySeparatorChar);
+        if (pathParts.Length < 2)
+            return;
+
+        string collectionName = pathParts[0];
+        string materialName = Path.GetFileNameWithoutExtension(pathParts[1]);
+
+        SpriteLoader.InvalidateCacheEntry(collectionName, materialName);
+        Plugin.Logger.LogInfo($"Invalidated cache for collection {collectionName}, material {materialName} due to atlas change: {e.ChangeType} {e.FullPath}");
 
         if (Plugin.Config.ReloadSceneOnChange)
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
