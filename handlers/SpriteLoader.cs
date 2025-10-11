@@ -16,6 +16,8 @@ public static class SpriteLoader
     private static readonly Dictionary<string, Texture2D> BuiltAtlases = new();
     private static readonly Dictionary<string, Texture2D> VanillaAtlases = new();
 
+    private static readonly HashSet<string> InvalidatedAtlases = new();
+
     /// <summary>
     /// Loads sprites for the given sprite collection from individual PNG files.
     /// </summary>
@@ -24,6 +26,23 @@ public static class SpriteLoader
         // Make sure directories exist
         IOUtil.EnsureDirectoryExists(LoadPath);
         IOUtil.EnsureDirectoryExists(AtlasLoadPath);
+
+        // Cache vanilla atlases if not already cached - this is important to not overwrite the original textures
+        foreach (var mat in collection.materials)
+            StoreVanillaAtlas(collection, mat.name.Split(' ')[0]);
+
+        // Rebuild any invalidated cache entries
+        foreach (var mat in collection.materials)
+        {
+            string matname = mat.name.Split(' ')[0];
+            if (InvalidatedAtlases.Contains(collection.name + matname))
+            {
+                BuiltAtlases.Remove(collection.name + matname);
+                InvalidatedAtlases.Remove(collection.name + matname);
+                mat.mainTexture = VanillaAtlases[collection.name + matname];
+                Plugin.Logger.LogInfo($"Cache entry for collection {collection.name}, material {matname} was invalidated, rebuilding atlas");
+            }
+        }
 
         // If collection directory doesn't exist in either sprites or spritesheets, skip it
         if (!Directory.Exists(Path.Combine(LoadPath, collection.name)) && !Directory.Exists(Path.Combine(AtlasLoadPath, collection.name)))
@@ -53,7 +72,7 @@ public static class SpriteLoader
                 continue;
             }
             bool spritesheetExists = File.Exists(Path.Combine(AtlasLoadPath, collection.name, matname + ".png"));
-            Texture2D rawTex = spritesheetExists ? TexUtil.LoadFromPNG(Path.Combine(AtlasLoadPath, collection.name, matname + ".png")) : GetVanillaAtlas(collection, matname);
+            Texture2D rawTex = spritesheetExists ? TexUtil.LoadFromPNG(Path.Combine(AtlasLoadPath, collection.name, matname + ".png")) : VanillaAtlases[collection.name + matname];
 
             // Load and apply each sprite from file if it exists
             tk2dSpriteDefinition[] spriteDefinitions = [.. collection.spriteDefinitions.Where(def => def.material == mat)];
@@ -96,18 +115,14 @@ public static class SpriteLoader
         }
     }
 
-    /// <summary>
-    /// Gets the vanilla atlas texture for the given collection and material, caching it for future use
-    /// </summary>
-    private static Texture2D GetVanillaAtlas(tk2dSpriteCollectionData collection, string materialName)
+    private static void StoreVanillaAtlas(tk2dSpriteCollectionData collection, string materialName)
     {
-        if (VanillaAtlases.TryGetValue(collection.name + materialName, out Texture2D cachedTex))
-            return cachedTex;
-        var mat = collection.materials.FirstOrDefault(m => m.name.StartsWith(materialName + " "));
+        if (VanillaAtlases.ContainsKey(collection.name + materialName))
+            return;
+        var mat = collection.materials.FirstOrDefault(m => m.name.StartsWith(materialName + " ") || m.name == materialName);
         var tex = TexUtil.TransferFromGPU(mat?.mainTexture);
         if (tex != null)
             VanillaAtlases[collection.name + materialName] = tex;
-        return tex;
     }
 
     /// <summary>
@@ -116,5 +131,6 @@ public static class SpriteLoader
     public static void InvalidateCacheEntry(string collectionName, string materialName)
     {
         BuiltAtlases.Remove(collectionName + materialName);
+        InvalidatedAtlases.Add(collectionName + materialName);
     }
 }
