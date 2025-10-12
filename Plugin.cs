@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -46,6 +47,9 @@ public class Plugin : BaseUnityPlugin
                 Logger.LogInfo($"Finished loading sprites for scene {scene.name}");
             };
         }
+
+        Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
+        harmony.PatchAll();
     }
 
     private void Update()
@@ -63,5 +67,6 @@ public class Plugin : BaseUnityPlugin
         IOUtil.EnsureDirectoryExists(SpriteDumper.DumpPath);
         IOUtil.EnsureDirectoryExists(SpriteLoader.LoadPath);
         IOUtil.EnsureDirectoryExists(SpriteLoader.AtlasLoadPath);
+        IOUtil.EnsureDirectoryExists(T2DHandler.T2DDumpPath);
     }
 }
