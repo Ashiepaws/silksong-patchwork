@@ -23,10 +23,6 @@ public static class SpriteLoader
     /// </summary>
     public static void LoadCollection(tk2dSpriteCollectionData collection)
     {
-        // Make sure directories exist
-        IOUtil.EnsureDirectoryExists(LoadPath);
-        IOUtil.EnsureDirectoryExists(AtlasLoadPath);
-
         foreach (var mat in collection.materials)
         {
             string matname = mat.name.Split(' ')[0];

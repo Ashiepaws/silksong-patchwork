@@ -19,6 +19,7 @@ public class Plugin : BaseUnityPlugin
         Config = new PatchworkConfig(base.Config);
         Logger.LogInfo($"Patchwork is loaded! Version: {MyPluginInfo.PLUGIN_VERSION}");
 
+        InitializeFolders();
         FileWatcher = new SpriteFileWatcher(); // Needs config to be initialized first
 
         if (Config.DumpSprites)
@@ -46,7 +47,7 @@ public class Plugin : BaseUnityPlugin
             };
         }
     }
-    
+
     private void Update()
     {
         if (Input.GetKeyDown(Config.ForceReloadKey) && Config.EnableForceReload)
@@ -54,5 +55,13 @@ public class Plugin : BaseUnityPlugin
 
         if (Input.GetKeyDown(Config.FullDumpKey) && Config.DumpSprites)
             SceneTraverser.TraverseAllScenes();
+    }
+    
+    private void InitializeFolders()
+    {
+        IOUtil.EnsureDirectoryExists(Config.DataBasePath);
+        IOUtil.EnsureDirectoryExists(SpriteDumper.DumpPath);
+        IOUtil.EnsureDirectoryExists(SpriteLoader.LoadPath);
+        IOUtil.EnsureDirectoryExists(SpriteLoader.AtlasLoadPath);
     }
 }

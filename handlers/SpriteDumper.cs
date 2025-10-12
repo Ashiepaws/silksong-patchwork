@@ -13,8 +13,6 @@ public static class SpriteDumper
 
     public static void DumpCollection(tk2dSpriteCollectionData collection)
     {
-        IOUtil.EnsureDirectoryExists(DumpPath);
-
         foreach (var mat in collection.materials)
         {
             if (mat == null || mat.mainTexture == null)
