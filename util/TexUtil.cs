@@ -87,4 +87,18 @@ public static class TexUtil
         }
         return tex;
     }
+
+    public static Texture2D ResizeTexture(Texture2D source, int newWidth, int newHeight)
+    {
+        RenderTexture rt = RenderTexture.GetTemporary(newWidth, newHeight);
+        Graphics.Blit(source, rt);
+        RenderTexture previous = RenderTexture.active;
+        RenderTexture.active = rt;
+        Texture2D resized = new(newWidth, newHeight);
+        resized.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
+        resized.Apply();
+        RenderTexture.active = previous;
+        RenderTexture.ReleaseTemporary(rt);
+        return resized;
+    }
 }

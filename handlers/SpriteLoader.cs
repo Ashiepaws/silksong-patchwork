@@ -52,8 +52,13 @@ public static class SpriteLoader
                 else if (def.flipped == tk2dSpriteDefinition.FlipMode.TPackerCW)
                     spriteTex = TexUtil.RotateCW(spriteTex);
 
-                // Blit the sprite into the atlas texture
                 Rect spriteRect = SpriteUtil.GetSpriteRect(def, baseTex);
+                if (spriteRect.width != spriteTex.width || spriteRect.height != spriteTex.height)
+                {
+                    Plugin.Logger.LogError($"Sprite {collection.name}/{matname}/{def.name} size mismatch: expected {spriteRect.width}x{spriteRect.height}, got {spriteTex.width}x{spriteTex.height}. Resizing, which may cause distortion.");
+                    spriteTex = TexUtil.ResizeTexture(spriteTex, (int)spriteRect.width, (int)spriteRect.height);
+                }
+
                 Color[] pixels = spriteTex.GetPixels();
                 baseTex.SetPixels((int)spriteRect.x, (int)spriteRect.y, (int)spriteRect.width, (int)spriteRect.height, pixels);
                 baseTex.Apply();
