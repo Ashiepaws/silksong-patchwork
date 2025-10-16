@@ -13,10 +13,7 @@ public static class SpriteLoader
     public static string LoadPath { get { return Path.Combine(Plugin.Config.DataBasePath, "Sprites"); } }
     public static string AtlasLoadPath { get { return Path.Combine(Plugin.Config.DataBasePath, "Spritesheets"); } }
 
-    private static readonly Dictionary<string, Texture2D> BuiltAtlases = new();
-    private static readonly Dictionary<string, Texture2D> VanillaAtlases = new();
-
-    private static readonly HashSet<string> InvalidatedAtlases = new();
+    private static readonly Dictionary<string, HashSet<string>> LoadedSprites = new();
 
     /// <summary>
     /// Loads sprites for the given sprite collection from individual PNG files.
@@ -26,26 +23,32 @@ public static class SpriteLoader
         foreach (var mat in collection.materials)
         {
             string matname = mat.name.Split(' ')[0];
-            StoreVanillaAtlas(collection, matname);
-            CheckInvalidation(collection, matname);
-
-            // If we have a cached version of this atlas, use it
-            if (BuiltAtlases.TryGetValue(collection.name + matname, out Texture2D cachedTex) && Plugin.Config.CacheAtlases)
+            if (!mat.mainTexture.isReadable)
             {
-                mat.mainTexture = cachedTex;
-                if (Plugin.Config.LogSpriteLoading) Plugin.Logger.LogInfo($"Loaded cached atlas for collection {collection.name}, material {matname}");
-                continue;
+                var unreadableTex = mat.mainTexture;
+                mat.mainTexture = FindSpritesheet(collection, matname);
+                Object.Destroy(unreadableTex);
+                if (Plugin.Config.LogSpriteLoading) Plugin.Logger.LogInfo($"Made texture readable for collection {collection.name}, material {mat.name}");
             }
+            var baseTex = mat.mainTexture as Texture2D;
 
-            Texture2D baseTex = FindSpritesheet(collection, matname) ?? VanillaAtlases[collection.name + matname];
             tk2dSpriteDefinition[] spriteDefinitions = [.. collection.spriteDefinitions.Where(def => def.material == mat)];
             foreach (var def in spriteDefinitions)
             {
+                if (def.name == null || def.name.Length == 0)
+                    continue; // Skip nameless sprites
+                if (LoadedSprites.ContainsKey(collection.name) && LoadedSprites[collection.name].Contains(def.name))
+                    continue; // Skip already loaded sprites
+
+                if (!LoadedSprites.ContainsKey(collection.name))
+                    LoadedSprites[collection.name] = new HashSet<string>();
+                LoadedSprites[collection.name].Add(def.name);
+
                 // Try to find a custom sprite for this definition
                 Texture2D spriteTex = FindSprite(collection.name, matname, def.name);
                 if (spriteTex == null)
                     continue; // No custom sprite found, will use vanilla
-                    
+
                 // Handle flipping modes
                 if (def.flipped == tk2dSpriteDefinition.FlipMode.Tk2d)
                     spriteTex = TexUtil.RotateCCW(spriteTex);
@@ -61,37 +64,18 @@ public static class SpriteLoader
 
                 Color[] pixels = spriteTex.GetPixels();
                 baseTex.SetPixels((int)spriteRect.x, (int)spriteRect.y, (int)spriteRect.width, (int)spriteRect.height, pixels);
-                baseTex.Apply();
+                Object.Destroy(spriteTex);
             }
-
-            // Cache the built atlas if enabled
-            if (Plugin.Config.CacheAtlases)
-                BuiltAtlases[collection.name + matname] = baseTex;
-
-            // Apply the built texture to the material
-            mat.mainTexture = baseTex;
+            baseTex.Apply();
+            Resources.UnloadUnusedAssets();
             if (Plugin.Config.LogSpriteLoading) Plugin.Logger.LogInfo($"Loaded sprites for collection {collection.name}, material {matname}");
-        }
-    }
-
-    private static void CheckInvalidation(tk2dSpriteCollectionData collection, string materialName)
-    {
-        lock (InvalidatedAtlases)
-        {
-            if (InvalidatedAtlases.Contains(collection.name + materialName))
-            {
-                BuiltAtlases.Remove(collection.name + materialName);
-                InvalidatedAtlases.Remove(collection.name + materialName);
-                var mat = collection.materials.FirstOrDefault(m => m.name.StartsWith(materialName + " ") || m.name == materialName);
-                mat.mainTexture = VanillaAtlases[collection.name + materialName];
-            }
         }
     }
 
     private static Texture2D FindSprite(string collectionName, string materialName, string spriteName)
     {
-        var files = Directory.GetFiles(LoadPath, "*.png", SearchOption.AllDirectories)
-            .Where(f => Path.GetFileNameWithoutExtension(f).Equals(spriteName) && Path.GetDirectoryName(f).EndsWith(Path.Combine(collectionName, materialName)));
+        var files = Directory.GetFiles(LoadPath, $"{spriteName}.png", SearchOption.AllDirectories)
+            .Where(f => Path.GetDirectoryName(f).EndsWith(Path.Combine(collectionName, materialName)));
         if (files.Any())
             return TexUtil.LoadFromPNG(files.First());
         return null;
@@ -99,32 +83,26 @@ public static class SpriteLoader
 
     private static Texture2D FindSpritesheet(tk2dSpriteCollectionData collection, string materialName)
     {
-        var files = Directory.GetFiles(AtlasLoadPath, "*.png", SearchOption.AllDirectories)
-            .Where(f => Path.GetFileNameWithoutExtension(f).Equals(materialName) && Path.GetDirectoryName(f).EndsWith(collection.name));
+        var files = Directory.GetFiles(AtlasLoadPath, $"{materialName}.png", SearchOption.AllDirectories)
+            .Where(f => Path.GetDirectoryName(f).EndsWith(collection.name));
         if (files.Any())
             return TexUtil.LoadFromPNG(files.First());
-        return null;
-    }
-
-    /// <summary>
-    /// Caches the vanilla atlas texture for the given collection and material.
-    /// </summary>
-    private static void StoreVanillaAtlas(tk2dSpriteCollectionData collection, string materialName)
-    {
-        if (VanillaAtlases.ContainsKey(collection.name + materialName))
-            return;
         var mat = collection.materials.FirstOrDefault(m => m.name.StartsWith(materialName + " ") || m.name == materialName);
-        var tex = TexUtil.TransferFromGPU(mat?.mainTexture);
-        if (tex != null)
-            VanillaAtlases[collection.name + materialName] = tex;
+        return TexUtil.TransferFromGPU(mat?.mainTexture);
     }
 
-    /// <summary>
-    /// Invalidates a cached atlas entry for the given collection and material.
-    /// </summary>
-    public static void InvalidateCacheEntry(string collectionName, string materialName)
+    public static void InvalidateCacheEntry(string collectionName, string spriteName)
     {
-        BuiltAtlases.Remove(collectionName + materialName);
-        InvalidatedAtlases.Add(collectionName + materialName);
+        if (LoadedSprites.ContainsKey(collectionName))
+        {
+            if (LoadedSprites[collectionName].Contains(spriteName))
+                LoadedSprites[collectionName].Remove(spriteName);
+        }
+    }
+    
+    public static void InvalidateCacheForCollection(string collectionName)
+    {
+        if (LoadedSprites.ContainsKey(collectionName))
+            LoadedSprites.Remove(collectionName);
     }
 }

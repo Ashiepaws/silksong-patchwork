@@ -44,10 +44,10 @@ public class SpriteFileWatcher
             return;
 
         string collectionName = pathParts[pathParts.Length - 3];
-        string materialName = pathParts[pathParts.Length - 2];
+        string spriteName = Path.GetFileNameWithoutExtension(pathParts[^1]);
 
-        SpriteLoader.InvalidateCacheEntry(collectionName, materialName);
-        Plugin.Logger.LogDebug($"Invalidated cache for collection {collectionName}, material {materialName} due to file change: {e.ChangeType} {e.FullPath}");
+        SpriteLoader.InvalidateCacheEntry(collectionName, spriteName);
+        Plugin.Logger.LogDebug($"Invalidated cache for collection {collectionName}, sprite {spriteName} due to file change: {e.ChangeType} {e.FullPath}");
 
         if (Plugin.Config.ReloadSceneOnChange)
             GameManager.instance.LoadScene(SceneManager.GetActiveScene().name);
@@ -61,10 +61,9 @@ public class SpriteFileWatcher
             return;
 
         string collectionName = pathParts[pathParts.Length - 3];
-        string materialName = Path.GetFileNameWithoutExtension(pathParts[1]);
 
-        SpriteLoader.InvalidateCacheEntry(collectionName, materialName);
-        Plugin.Logger.LogDebug($"Invalidated cache for collection {collectionName}, material {materialName} due to atlas change: {e.ChangeType} {e.FullPath}");
+        SpriteLoader.InvalidateCacheForCollection(collectionName);
+        Plugin.Logger.LogDebug($"Invalidated cache for collection {collectionName} due to atlas change: {e.ChangeType} {e.FullPath}");
 
         if (Plugin.Config.ReloadSceneOnChange)
             GameManager.instance.LoadScene(SceneManager.GetActiveScene().name);
