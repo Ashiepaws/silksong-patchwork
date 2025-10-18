@@ -1,21 +1,26 @@
 using System.IO;
+using BepInEx;
 using UnityEngine;
 
 namespace Patchwork;
 
 public static class TexUtil
 {
-    public static Texture2D TransferFromGPU(Texture tex)
+    public static Material RotateMaterial = null;
+
+    public static void Initialize()
+    {
+        string bundlePath = Path.Combine(Paths.PluginPath, "Patchwork", "patchwork.assetbundle");
+        AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
+        var RotateShader = bundle.LoadAsset<Shader>("Assets/Patchwork/Rotate.shader");
+        RotateMaterial = new Material(RotateShader);
+    }
+
+    public static RenderTexture GetReadable(Texture tex)
     {
         RenderTexture rt = RenderTexture.GetTemporary(tex.width, tex.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
         Graphics.Blit(tex, rt);
-        Texture2D rawTex = new(tex.width, tex.height, TextureFormat.RGBA32, false);
-        RenderTexture.active = rt;
-        rawTex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
-        rawTex.Apply();
-        RenderTexture.active = null;
-        RenderTexture.ReleaseTemporary(rt);
-        return rawTex;
+        return rt;
     }
 
     public static Texture2D GetCutout(Texture2D source, Rect rect)
@@ -79,10 +84,10 @@ public static class TexUtil
         }
 
         byte[] pngData = File.ReadAllBytes(path);
-        Texture2D tex = new(2, 2, TextureFormat.RGBA32, false);
+        Texture2D tex = new(2, 2);
         if (!tex.LoadImage(pngData))
         {
-            Plugin.Logger.LogWarning($"LoadFromPNG: Failed to load image from {path}");
+            Plugin.Logger.LogWarning($"LoadFromPNG: Failed to load image data from {path}");
             return null;
         }
         return tex;

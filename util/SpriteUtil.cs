@@ -6,7 +6,7 @@ namespace Patchwork;
 
 public static class SpriteUtil
 {
-    public static Rect GetSpriteRect(tk2dSpriteDefinition def, Texture2D tex)
+    public static Rect GetSpriteRect(tk2dSpriteDefinition def, Texture tex)
     {
         Vector2[] uvs = def.uvs;
 

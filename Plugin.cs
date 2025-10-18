@@ -20,6 +20,7 @@ public class Plugin : BaseUnityPlugin
         Config = new PatchworkConfig(base.Config);
         Logger.LogInfo($"Patchwork is loaded! Version: {MyPluginInfo.PLUGIN_VERSION}");
 
+        TexUtil.Initialize();
         InitializeFolders();
         FileWatcher = new SpriteFileWatcher(); // Needs config to be initialized first
 
@@ -48,8 +49,9 @@ public class Plugin : BaseUnityPlugin
             };
         }
 
-        Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
-        harmony.PatchAll();
+        // TODO: Enable Harmony patches when T2D handling works properly
+        //Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
+        //harmony.PatchAll();
     }
 
     private void Update()
