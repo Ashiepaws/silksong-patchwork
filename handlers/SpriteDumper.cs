@@ -26,7 +26,8 @@ public static class SpriteDumper
                 if (Plugin.Config.LogSpriteWarnings) Plugin.Logger.LogWarning($"Skipping material {mat.name} with invalid texture size {matTex.width}x{matTex.height}");
                 continue;
             }
-            Texture2D rawTex = TexUtil.TransferFromGPU(matTex);
+            // TODO: Re-enable this, figuring out sprite loading first
+            Texture2D rawTex = null;
 
             string matname = mat.name.Split(' ')[0];
             tk2dSpriteDefinition[] spriteDefinitions = [.. collection.spriteDefinitions.Where(def => def.material == mat)];
@@ -51,9 +52,9 @@ public static class SpriteDumper
                 else if (def.flipped == tk2dSpriteDefinition.FlipMode.TPackerCW)
                     spriteTex = TexUtil.RotateCCW(spriteTex);
 
-                var png = spriteTex.EncodeToPNG();
-                IOUtil.EnsureDirectoryExists(Path.Combine(DumpPath, collection.name, matname));
-                File.WriteAllBytes(Path.Combine(DumpPath, collection.name, matname, def.name + ".png"), png);
+                //var png = spriteTex.EncodeToPNG();
+                //IOUtil.EnsureDirectoryExists(Path.Combine(DumpPath, collection.name, matname));
+                //File.WriteAllBytes(Path.Combine(DumpPath, collection.name, matname, def.name + ".png"), png);
 
                 if (Plugin.Config.LogSpriteDumping) Plugin.Logger.LogInfo($"Dumped sprite {def.name} from collection {collection.name}, material {matname}");
             }

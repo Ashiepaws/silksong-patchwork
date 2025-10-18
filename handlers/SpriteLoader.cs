@@ -24,51 +24,58 @@ public static class SpriteLoader
         {
             string matname = mat.name.Split(' ')[0];
             if (!mat.mainTexture.isReadable)
-            {
+            {                
                 var unreadableTex = mat.mainTexture;
                 mat.mainTexture = FindSpritesheet(collection, matname);
                 Object.Destroy(unreadableTex);
                 if (Plugin.Config.LogSpriteLoading) Plugin.Logger.LogInfo($"Made texture readable for collection {collection.name}, material {mat.name}");
             }
-            var baseTex = mat.mainTexture as Texture2D;
+
+            var previous = RenderTexture.active;
+            RenderTexture.active = mat.mainTexture as RenderTexture;
+            GL.PushMatrix();
+            GL.LoadPixelMatrix(0, mat.mainTexture.width, mat.mainTexture.height, 0);
 
             tk2dSpriteDefinition[] spriteDefinitions = [.. collection.spriteDefinitions.Where(def => def.material == mat)];
+
             foreach (var def in spriteDefinitions)
             {
-                if (def.name == null || def.name.Length == 0)
-                    continue; // Skip nameless sprites
-                if (LoadedSprites.ContainsKey(collection.name) && LoadedSprites[collection.name].Contains(def.name))
-                    continue; // Skip already loaded sprites
-
+                if (string.IsNullOrEmpty(def.name)) continue;
                 if (!LoadedSprites.ContainsKey(collection.name))
                     LoadedSprites[collection.name] = new HashSet<string>();
-                LoadedSprites[collection.name].Add(def.name);
+                if (!LoadedSprites[collection.name].Add(def.name)) continue;
 
-                // Try to find a custom sprite for this definition
                 Texture2D spriteTex = FindSprite(collection.name, matname, def.name);
-                if (spriteTex == null)
-                    continue; // No custom sprite found, will use vanilla
+                if (spriteTex == null) continue;
 
-                // Handle flipping modes
-                if (def.flipped == tk2dSpriteDefinition.FlipMode.Tk2d)
-                    spriteTex = TexUtil.RotateCCW(spriteTex);
-                else if (def.flipped == tk2dSpriteDefinition.FlipMode.TPackerCW)
-                    spriteTex = TexUtil.RotateCW(spriteTex);
+                Rect spriteRect = SpriteUtil.GetSpriteRect(def, mat.mainTexture);
+                Plugin.Logger.LogInfo($"Loaded sprite {def.name} for collection {collection.name}, material {mat.name}");
 
-                Rect spriteRect = SpriteUtil.GetSpriteRect(def, baseTex);
-                if (spriteRect.width != spriteTex.width || spriteRect.height != spriteTex.height)
+                Vector2 uBasis, vBasis;
+                switch (def.flipped)
                 {
-                    Plugin.Logger.LogError($"Sprite {collection.name}/{matname}/{def.name} size mismatch: expected {spriteRect.width}x{spriteRect.height}, got {spriteTex.width}x{spriteTex.height}. Resizing, which may cause distortion.");
-                    spriteTex = TexUtil.ResizeTexture(spriteTex, (int)spriteRect.width, (int)spriteRect.height);
+                    case tk2dSpriteDefinition.FlipMode.Tk2d:
+                        uBasis = Vector2.up; vBasis = Vector2.left;
+                        break;
+
+                    case tk2dSpriteDefinition.FlipMode.TPackerCW:
+                        uBasis = Vector2.down; vBasis = Vector2.right;
+                        break;
+
+                    default:
+                        uBasis = Vector2.right; vBasis = Vector2.up;
+                        break;
                 }
 
-                Color[] pixels = spriteTex.GetPixels();
-                baseTex.SetPixels((int)spriteRect.x, (int)spriteRect.y, (int)spriteRect.width, (int)spriteRect.height, pixels);
-                Object.Destroy(spriteTex);
+                TexUtil.RotateMaterial.SetVector("_Basis", new Vector4(uBasis.x, uBasis.y, vBasis.x, vBasis.y));
+                TexUtil.RotateMaterial.mainTexture = spriteTex;
+                TexUtil.RotateMaterial.SetPass(0);
+                Graphics.DrawTexture(spriteRect, spriteTex, TexUtil.RotateMaterial);
             }
-            baseTex.Apply();
-            Resources.UnloadUnusedAssets();
-            if (Plugin.Config.LogSpriteLoading) Plugin.Logger.LogInfo($"Loaded sprites for collection {collection.name}, material {matname}");
+            
+            GL.PopMatrix();
+            RenderTexture.active = previous;
+            mat.mainTexture.IncrementUpdateCount();
         }
     }
 
@@ -81,14 +88,20 @@ public static class SpriteLoader
         return null;
     }
 
-    private static Texture2D FindSpritesheet(tk2dSpriteCollectionData collection, string materialName)
+    private static RenderTexture FindSpritesheet(tk2dSpriteCollectionData collection, string materialName)
     {
         var files = Directory.GetFiles(AtlasLoadPath, $"{materialName}.png", SearchOption.AllDirectories)
             .Where(f => Path.GetDirectoryName(f).EndsWith(collection.name));
         if (files.Any())
-            return TexUtil.LoadFromPNG(files.First());
+        {
+            var tex2d = TexUtil.LoadFromPNG(files.First());
+            RenderTexture rt = RenderTexture.GetTemporary(tex2d.width, tex2d.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            Graphics.Blit(tex2d, rt);
+            Object.Destroy(tex2d);
+            return rt;
+        }
         var mat = collection.materials.FirstOrDefault(m => m.name.StartsWith(materialName + " ") || m.name == materialName);
-        return TexUtil.TransferFromGPU(mat?.mainTexture);
+        return TexUtil.GetReadable(mat?.mainTexture);
     }
 
     public static void InvalidateCacheEntry(string collectionName, string spriteName)
