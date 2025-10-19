@@ -54,9 +54,8 @@ public class Plugin : BaseUnityPlugin
             };
         }
 
-        // TODO: Enable Harmony patches when T2D handling works properly
-        //Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
-        //harmony.PatchAll();
+        Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
+        harmony.PatchAll();
     }
 
     private void Update()

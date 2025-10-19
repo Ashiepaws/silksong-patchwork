@@ -3,6 +3,7 @@ using HarmonyLib;
 using UnityEngine;
 using System.Linq;
 using Patchwork.Util;
+using System.Collections.Generic;
 
 namespace Patchwork.Handlers;
 
@@ -11,42 +12,65 @@ public static class T2DHandler
 {
     public static string T2DDumpPath { get { return Path.Combine(SpriteDumper.DumpPath, "T2D"); } }
 
+    private static readonly Dictionary<string, Sprite> LoadedT2DSprites = new();
+
     [HarmonyPostfix]
     [HarmonyPatch(typeof(SpriteRenderer), nameof(SpriteRenderer.sprite), MethodType.Setter)]
     public static void SetSpritePostfix(SpriteRenderer __instance, Sprite value)
     {
         if (__instance == null || value == null)
             return;
-        string texName = StringUtil.SanitizeFileName(value.texture.name);
 
-        if (Plugin.Config.DumpSprites && value.texture != null && value.texture.name != null && value.texture.name != "")
+        if (Plugin.Config.DumpSprites && !string.IsNullOrEmpty(value.name) && !string.IsNullOrEmpty(value.texture.name))
         {
-            string path = Path.Combine(T2DDumpPath, $"{texName}.png");
-            if (!File.Exists(path))
+            if (value.texture.name.Contains("-BC7-"))
             {
-                if (Plugin.Config.LogSpriteDumping) Plugin.Logger.LogInfo($"Dumping sprite set on SpriteRenderer {__instance.name} - {texName}");
-                var rt = TexUtil.GetReadable(value.texture);
-                Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
+                Rect spriteRect = value.textureRect;
+                Texture2D spriteTex = new((int)spriteRect.width, (int)spriteRect.height, TextureFormat.RGBA32, false);
                 RenderTexture previous = RenderTexture.active;
+                RenderTexture rt = TexUtil.GetReadable(value.texture);
                 RenderTexture.active = rt;
-                tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
-                tex.Apply();
+                GL.PushMatrix();
+                GL.LoadPixelMatrix(0, rt.width, rt.height, 0);
+                spriteTex.ReadPixels(new Rect(spriteRect.x, spriteRect.y, spriteRect.width, spriteRect.height), 0, 0);
+                spriteTex.Apply();
+                GL.PopMatrix();
                 RenderTexture.active = previous;
-                Object.Destroy(rt);
-                var png = tex.EncodeToPNG();
-                File.WriteAllBytes(path, png);
+                RenderTexture.ReleaseTemporary(rt);
+
+                // Split at -BC7- and remove last hyphen part
+                string cleanName = CleanTextureName(value.texture.name);
+                string saveDir = Path.Combine(T2DDumpPath, cleanName);
+                IOUtil.EnsureDirectoryExists(saveDir);
+                string savePath = Path.Combine(saveDir, value.name + ".png");
+                if (!File.Exists(savePath))
+                {
+                    byte[] pngData = spriteTex.EncodeToPNG();
+                    File.WriteAllBytes(savePath, pngData);
+                    if (Plugin.Config.LogSpriteLoading)
+                        Plugin.Logger.LogInfo($"Dumped T2D sprite {value.name} from texture {value.texture.name} to {savePath}");
+                }
             }
         }
 
         if (Plugin.Config.LoadSprites)
         {
-            var customTex = FindT2DSprite(texName);
-            if (customTex != null)
+            if (LoadedT2DSprites.ContainsKey(value.name))
             {
-                if (Plugin.Config.LogSpriteLoading) Plugin.Logger.LogInfo($"Loading custom sprite for SpriteRenderer {__instance.name} - {texName}");
-                Rect rect = new(0, 0, customTex.width, customTex.height);
-                Vector2 pivot = new(0.5f, 0.5f);
-                __instance.sprite = Sprite.Create(customTex, rect, pivot, value.pixelsPerUnit);
+                __instance.sprite = LoadedT2DSprites[value.name];
+                return;
+            }
+            if (value.texture.name.Contains("-BC7-"))
+            {
+                Texture2D spriteTex = FindT2DSprite(CleanTextureName(value.texture.name), value.name);
+                if (spriteTex == null)
+                    return;
+
+                Sprite newSprite = Sprite.Create(spriteTex, new Rect(0, 0, spriteTex.width, spriteTex.height), new Vector2(0.5f, 0.5f), value.pixelsPerUnit);
+                LoadedT2DSprites[value.name] = newSprite;
+                __instance.sprite = newSprite;
+                if (Plugin.Config.LogSpriteLoading)
+                    Plugin.Logger.LogInfo($"Loaded T2D sprite {value.name} from custom PNG");
             }
         }
     }
@@ -58,5 +82,25 @@ public static class T2DHandler
         if (files.Any())
             return TexUtil.LoadFromPNG(files.First());
         return null;
+    }
+
+    private static Texture2D FindT2DSprite(string texName, string spriteName)
+    {
+        var files = Directory.GetFiles(SpriteLoader.LoadPath, spriteName + ".png", SearchOption.AllDirectories)
+            .Where(f => Path.GetDirectoryName(f).EndsWith(Path.Combine("T2D", texName)));
+        if (files.Any())
+            return TexUtil.LoadFromPNG(files.First());
+        return null;
+    }
+
+    private static string CleanTextureName(string textureName)
+    {
+        if (textureName.Contains("-BC7-"))
+        {
+            string cleanName = textureName.Split(["-BC7-"], System.StringSplitOptions.None)[1];
+            cleanName = string.Join("-", cleanName.Split('-').Take(cleanName.Split('-').Length - 1));
+            return cleanName;
+        }
+        return textureName;
     }
 }
