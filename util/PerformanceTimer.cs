@@ -7,6 +7,8 @@ public static class PerformanceTimer
     private static readonly Dictionary<string, System.Diagnostics.Stopwatch> Timers = new();
     public static void Start(string label)
     {
+        if (!Plugin.Config.EnablePerformanceTimers) return;
+
         var timer = new System.Diagnostics.Stopwatch();
         timer.Start();
         Timers[label] = timer;
@@ -14,6 +16,8 @@ public static class PerformanceTimer
 
     public static void Stop(string label)
     {
+        if (!Plugin.Config.EnablePerformanceTimers) return;
+        
         if (Timers.ContainsKey(label))
         {
             Timers[label].Stop();

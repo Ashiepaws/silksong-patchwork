@@ -6,9 +6,6 @@ using Patchwork.Util;
 
 namespace Patchwork.Handlers;
 
-/// <summary>
-/// Handles loading of sprites from individual PNG files into sprite collections.
-/// </summary>
 public static class SpriteLoader
 {
     public static string LoadPath { get { return Path.Combine(Plugin.BasePath, "Sprites"); } }
@@ -16,11 +13,9 @@ public static class SpriteLoader
 
     private static readonly Dictionary<string, HashSet<string>> LoadedSprites = new();
 
-    /// <summary>
-    /// Loads sprites for the given sprite collection from individual PNG files.
-    /// </summary>
     public static void LoadCollection(tk2dSpriteCollectionData collection)
     {
+        PerformanceTimer.Start($"LoadCollection {collection.name}");
         foreach (var mat in collection.materials)
         {
             string matname = mat.name.Split(' ')[0];
@@ -28,17 +23,15 @@ public static class SpriteLoader
             {
                 var unreadableTex = mat.mainTexture;
                 mat.mainTexture = FindSpritesheet(collection, matname);
-                Object.Destroy(unreadableTex);
                 if (Plugin.Config.LogSpriteLoading) Plugin.Logger.LogInfo($"Made texture readable for collection {collection.name}, material {mat.name}");
             }
 
+            PerformanceTimer.Start($"LoadSpritesForMaterial {collection.name} {mat.name}");
             var previous = RenderTexture.active;
             RenderTexture.active = mat.mainTexture as RenderTexture;
             GL.PushMatrix();
             GL.LoadPixelMatrix(0, mat.mainTexture.width, mat.mainTexture.height, 0);
-
             tk2dSpriteDefinition[] spriteDefinitions = [.. collection.spriteDefinitions.Where(def => def.material == mat)];
-
             foreach (var def in spriteDefinitions)
             {
                 if (string.IsNullOrEmpty(def.name)) continue;
@@ -51,8 +44,6 @@ public static class SpriteLoader
 
                 Rect spriteRect = SpriteUtil.GetSpriteRect(def, mat.mainTexture);
                 spriteRect.y = mat.mainTexture.height - spriteRect.y - spriteRect.height;
-                Plugin.Logger.LogInfo($"Loaded sprite {def.name} for collection {collection.name}, material {mat.name}");
-
                 Vector2 uBasis, vBasis;
                 switch (def.flipped)
                 {
@@ -70,14 +61,15 @@ public static class SpriteLoader
                 }
 
                 TexUtil.RotateMaterial.SetVector("_Basis", new Vector4(uBasis.x, uBasis.y, vBasis.x, vBasis.y));
-
                 Graphics.DrawTextureImpl(spriteRect, spriteTex, new Rect(0, 0, 1, 1), 0, 0, 0, 0, Color.white, TexUtil.RotateMaterial, 0);
             }
 
             mat.mainTexture.IncrementUpdateCount();
             GL.PopMatrix();
             RenderTexture.active = previous;
+            PerformanceTimer.Stop($"LoadSpritesForMaterial {collection.name} {mat.name}");
         }
+        PerformanceTimer.Stop($"LoadCollection {collection.name}");
     }
 
     private static Texture2D FindSprite(string collectionName, string materialName, string spriteName)
