@@ -3,7 +3,7 @@ using HarmonyLib;
 using UnityEngine;
 using System.Linq;
 
-namespace Patchwork;
+namespace Patchwork.Handlers;
 
 [HarmonyPatch]
 public static class T2DHandler

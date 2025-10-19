@@ -1,6 +1,8 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
+using Patchwork.Handlers;
+using Patchwork.Util;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 

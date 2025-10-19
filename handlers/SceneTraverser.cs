@@ -1,8 +1,6 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine.SceneManagement;
 
-namespace Patchwork;
+namespace Patchwork.Handlers;
 
 public static class SceneTraverser
 {

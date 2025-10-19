@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace Patchwork;
+namespace Patchwork.Util;
 
 public static class IOUtil
 {

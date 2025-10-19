@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 
-namespace Patchwork;
+namespace Patchwork.Handlers;
 
 /// <summary>
 /// Handles loading of sprites from individual PNG files into sprite collections.
