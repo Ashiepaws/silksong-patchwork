@@ -23,8 +23,8 @@ public static class SpriteLoader
         foreach (var mat in collection.materials)
         {
             string matname = mat.name.Split(' ')[0];
-            if (!mat.mainTexture.isReadable)
-            {                
+            if (!mat.mainTexture.isReadable || mat.mainTexture is not RenderTexture)
+            {
                 var unreadableTex = mat.mainTexture;
                 mat.mainTexture = FindSpritesheet(collection, matname);
                 Object.Destroy(unreadableTex);
@@ -49,17 +49,18 @@ public static class SpriteLoader
                 if (spriteTex == null) continue;
 
                 Rect spriteRect = SpriteUtil.GetSpriteRect(def, mat.mainTexture);
+                spriteRect.y = mat.mainTexture.height - spriteRect.y - spriteRect.height;
                 Plugin.Logger.LogInfo($"Loaded sprite {def.name} for collection {collection.name}, material {mat.name}");
 
                 Vector2 uBasis, vBasis;
                 switch (def.flipped)
                 {
                     case tk2dSpriteDefinition.FlipMode.Tk2d:
-                        uBasis = Vector2.up; vBasis = Vector2.left;
+                        uBasis = Vector2.down; vBasis = Vector2.right;
                         break;
 
                     case tk2dSpriteDefinition.FlipMode.TPackerCW:
-                        uBasis = Vector2.down; vBasis = Vector2.right;
+                        uBasis = Vector2.up; vBasis = Vector2.left;
                         break;
 
                     default:
@@ -68,14 +69,13 @@ public static class SpriteLoader
                 }
 
                 TexUtil.RotateMaterial.SetVector("_Basis", new Vector4(uBasis.x, uBasis.y, vBasis.x, vBasis.y));
-                TexUtil.RotateMaterial.mainTexture = spriteTex;
-                TexUtil.RotateMaterial.SetPass(0);
-                Graphics.DrawTexture(spriteRect, spriteTex, TexUtil.RotateMaterial);
+
+                Graphics.DrawTextureImpl(spriteRect, spriteTex, new Rect(0, 0, 1, 1), 0, 0, 0, 0, Color.white, TexUtil.RotateMaterial, 0);
             }
-            
+
+            mat.mainTexture.IncrementUpdateCount();
             GL.PopMatrix();
             RenderTexture.active = previous;
-            mat.mainTexture.IncrementUpdateCount();
         }
     }
 

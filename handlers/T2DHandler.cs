@@ -24,7 +24,14 @@ public static class T2DHandler
             if (!File.Exists(path))
             {
                 if (Plugin.Config.LogSpriteDumping) Plugin.Logger.LogInfo($"Dumping sprite set on SpriteRenderer {__instance.name} - {texName}");
-                var tex = TexUtil.TransferFromGPU(value.texture);
+                var rt = TexUtil.GetReadable(value.texture);
+                Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
+                RenderTexture previous = RenderTexture.active;
+                RenderTexture.active = rt;
+                tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+                tex.Apply();
+                RenderTexture.active = previous;
+                Object.Destroy(rt);
                 var png = tex.EncodeToPNG();
                 File.WriteAllBytes(path, png);
             }
