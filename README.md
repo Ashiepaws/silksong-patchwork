@@ -14,3 +14,9 @@ Patchwork lets you customize practically all sprites in the game - and without t
 
 ### Audio Replacement
 Replacement of audio files is planned, but not currently supported.
+
+## Special Thanks
+
+* To [Douglas Gregory](https://bsky.app/profile/dmgregory.ca) without whose help I wouldn't have been able to add the GPU-related performance improvements that made Patchwork v2 as fast as it is now.
+* To [RatherChaoticDev](https://next.nexusmods.com/profile/RatherChaoticDev) who created the original [Silksong Customizer](https://www.nexusmods.com/hollowknightsilksong/mods/142) mod that Patchwork was based on
+* To [Su4enka](https://next.nexusmods.com/profile/Su4enka) whose CustomizerT2D plugin (as part of their [Cute Hornet skin](https://www.nexusmods.com/hollowknightsilksong/mods/203)) helped with adding T2D support to Patchwork
