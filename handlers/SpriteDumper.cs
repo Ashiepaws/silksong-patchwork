@@ -2,7 +2,7 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 
-namespace Patchwork;
+namespace Patchwork.Handlers;
 
 /// <summary>
 /// Handles dumping of sprites from sprite collections to individual PNG files.

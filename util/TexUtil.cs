@@ -2,7 +2,7 @@ using System.IO;
 using BepInEx;
 using UnityEngine;
 
-namespace Patchwork;
+namespace Patchwork.Util;
 
 public static class TexUtil
 {

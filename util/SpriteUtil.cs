@@ -2,7 +2,7 @@ using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace Patchwork;
+namespace Patchwork.Util;
 
 public static class SpriteUtil
 {

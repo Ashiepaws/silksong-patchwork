@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Patchwork;
+namespace Patchwork.Util;
 
 public static class PerformanceTimer
 {

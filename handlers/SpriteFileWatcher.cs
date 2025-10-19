@@ -1,7 +1,7 @@
 using System.IO;
 using UnityEngine.SceneManagement;
 
-namespace Patchwork;
+namespace Patchwork.Handlers;
 
 /// <summary>
 /// Watches the sprite load directory for changes and invalidates cache entries accordingly.
