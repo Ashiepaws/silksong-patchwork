@@ -11,7 +11,8 @@ public static class SpriteLoader
     public static string LoadPath { get { return Path.Combine(Plugin.BasePath, "Sprites"); } }
     public static string AtlasLoadPath { get { return Path.Combine(Plugin.BasePath, "Spritesheets"); } }
 
-    private static readonly Dictionary<string, HashSet<string>> LoadedSprites = new();
+    private static readonly Dictionary<string, HashSet<string>> LoadedAtlases = new();
+    private static readonly Dictionary<string, Dictionary<string, HashSet<string>>> LoadedSprites = new();
 
     public static void LoadCollection(tk2dSpriteCollectionData collection)
     {
@@ -19,7 +20,9 @@ public static class SpriteLoader
         foreach (var mat in collection.materials)
         {
             string matname = mat.name.Split(' ')[0];
-            if (!mat.mainTexture.isReadable || mat.mainTexture is not RenderTexture)
+            if (!LoadedAtlases.ContainsKey(collection.name))
+                LoadedAtlases[collection.name] = new HashSet<string>();
+            if (LoadedAtlases[collection.name].Add(matname))
             {
                 var unreadableTex = mat.mainTexture;
                 mat.mainTexture = FindSpritesheet(collection, matname);
@@ -36,8 +39,10 @@ public static class SpriteLoader
             {
                 if (string.IsNullOrEmpty(def.name)) continue;
                 if (!LoadedSprites.ContainsKey(collection.name))
-                    LoadedSprites[collection.name] = new HashSet<string>();
-                if (!LoadedSprites[collection.name].Add(def.name)) continue;
+                    LoadedSprites[collection.name] = new Dictionary<string, HashSet<string>>();
+                if (!LoadedSprites[collection.name].ContainsKey(matname))
+                    LoadedSprites[collection.name][matname] = new HashSet<string>();
+                if (!LoadedSprites[collection.name][matname].Add(def.name)) continue;
 
                 Texture2D spriteTex = FindSprite(collection.name, matname, def.name);
                 if (spriteTex == null) continue;
@@ -97,18 +102,19 @@ public static class SpriteLoader
         return TexUtil.GetReadable(mat?.mainTexture);
     }
 
-    public static void InvalidateCacheEntry(string collectionName, string spriteName)
+    public static void MarkReloadSprite(string collectionName, string atlasName, string spriteName)
     {
-        if (LoadedSprites.ContainsKey(collectionName))
-        {
-            if (LoadedSprites[collectionName].Contains(spriteName))
-                LoadedSprites[collectionName].Remove(spriteName);
-        }
+        if (LoadedSprites.ContainsKey(collectionName) && LoadedSprites[collectionName].ContainsKey(atlasName))
+            LoadedSprites[collectionName][atlasName].Remove(spriteName);
     }
     
-    public static void InvalidateCacheForCollection(string collectionName)
+
+    public static void MarkReloadAtlas(string collectionName, string atlasName)
     {
-        if (LoadedSprites.ContainsKey(collectionName))
-            LoadedSprites.Remove(collectionName);
+        if (LoadedAtlases.ContainsKey(collectionName))
+            LoadedAtlases[collectionName].Remove(atlasName);
+
+        if (LoadedSprites.ContainsKey(collectionName) && LoadedSprites[collectionName].ContainsKey(atlasName))
+            LoadedSprites[collectionName][atlasName].Clear();
     }
 }
