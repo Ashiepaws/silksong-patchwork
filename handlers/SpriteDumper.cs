@@ -10,7 +10,7 @@ namespace Patchwork.Handlers;
 /// </summary>
 public static class SpriteDumper
 {
-    public static string DumpPath { get { return Path.Combine(Plugin.Config.DataBasePath, "Dumps"); } }
+    public static string DumpPath { get { return Path.Combine(Plugin.BasePath, "Dumps"); } }
 
     public static void DumpCollection(tk2dSpriteCollectionData collection)
     {

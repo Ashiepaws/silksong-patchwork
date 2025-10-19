@@ -1,4 +1,5 @@
-﻿using BepInEx;
+﻿using System.IO;
+using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using Patchwork.Handlers;
@@ -14,6 +15,8 @@ public class Plugin : BaseUnityPlugin
     internal static new ManualLogSource Logger;
     internal static new PatchworkConfig Config;
     internal static SpriteFileWatcher FileWatcher;
+
+    public static string BasePath { get { return Path.Combine(Paths.PluginPath, "Patchwork"); } }
 
     private void Awake()
     {
@@ -67,7 +70,6 @@ public class Plugin : BaseUnityPlugin
     
     private void InitializeFolders()
     {
-        IOUtil.EnsureDirectoryExists(Config.DataBasePath);
         IOUtil.EnsureDirectoryExists(SpriteDumper.DumpPath);
         IOUtil.EnsureDirectoryExists(SpriteLoader.LoadPath);
         IOUtil.EnsureDirectoryExists(SpriteLoader.AtlasLoadPath);
