@@ -1,0 +1,2 @@
+# About this folder
+This folder contains all files that are bundled into an assetbundle and loaded as Unity Assets at runtime. These are not required during the build process of the plugin itself, but are necessary for it to run.
