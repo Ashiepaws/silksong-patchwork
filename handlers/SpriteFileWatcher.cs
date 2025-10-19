@@ -21,7 +21,7 @@ public class SpriteFileWatcher
         SpriteWatcher.Changed += OnSpriteChanged;
         SpriteWatcher.Created += OnSpriteChanged;
         SpriteWatcher.Deleted += OnSpriteChanged;
-        SpriteWatcher.Renamed += (s, e) => OnSpriteChanged(s, e);
+        SpriteWatcher.Renamed += OnSpriteChanged;
         SpriteWatcher.EnableRaisingEvents = true;
 
         AtlasWatcher = new FileSystemWatcher();
@@ -32,7 +32,7 @@ public class SpriteFileWatcher
         AtlasWatcher.Changed += OnAtlasChanged;
         AtlasWatcher.Created += OnAtlasChanged;
         AtlasWatcher.Deleted += OnAtlasChanged;
-        AtlasWatcher.Renamed += (s, e) => OnAtlasChanged(s, e);
+        AtlasWatcher.Renamed += OnAtlasChanged;
         AtlasWatcher.EnableRaisingEvents = true;
     }
 
@@ -43,11 +43,12 @@ public class SpriteFileWatcher
         if (pathParts.Length < 3)
             return;
 
-        string collectionName = pathParts[pathParts.Length - 3];
+        string collectionName = pathParts[^3];
+        string atlasName = pathParts[^2];
         string spriteName = Path.GetFileNameWithoutExtension(pathParts[^1]);
 
-        SpriteLoader.InvalidateCacheEntry(collectionName, spriteName);
-        Plugin.Logger.LogDebug($"Invalidated cache for collection {collectionName}, sprite {spriteName} due to file change: {e.ChangeType} {e.FullPath}");
+        SpriteLoader.MarkReloadSprite(collectionName, atlasName, spriteName);
+        Plugin.Logger.LogDebug($"Invalidated cache for collection {collectionName}, atlas {atlasName}, sprite {spriteName} due to file change: {e.ChangeType} {e.FullPath}");
 
         if (Plugin.Config.ReloadSceneOnChange)
             GameManager.instance.LoadScene(SceneManager.GetActiveScene().name);
@@ -60,9 +61,10 @@ public class SpriteFileWatcher
         if (pathParts.Length < 2)
             return;
 
-        string collectionName = pathParts[pathParts.Length - 3];
+        string collectionName = pathParts[^2];
+        string atlasName = Path.GetFileNameWithoutExtension(pathParts[^1]);
 
-        SpriteLoader.InvalidateCacheForCollection(collectionName);
+        SpriteLoader.MarkReloadAtlas(collectionName, atlasName);
         Plugin.Logger.LogDebug($"Invalidated cache for collection {collectionName} due to atlas change: {e.ChangeType} {e.FullPath}");
 
         if (Plugin.Config.ReloadSceneOnChange)
