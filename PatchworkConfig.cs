@@ -34,6 +34,9 @@ public class PatchworkConfig
     private readonly ConfigEntry<bool> _LogSpriteWarnings;
     public bool LogSpriteWarnings { get { return _LogSpriteWarnings.Value; } }
 
+    private readonly ConfigEntry<bool> _EnablePerformanceTimers;
+    public bool EnablePerformanceTimers { get { return _EnablePerformanceTimers.Value; } }
+
     public PatchworkConfig(ConfigFile config)
     {
         _DumpSprites = config.Bind("General", "DumpSprites", false, "Enable dumping of sprites");
@@ -50,5 +53,6 @@ public class PatchworkConfig
         _LogSpriteLoading = config.Bind("Logging", "LogSpriteLoading", false, "Enable detailed logging of sprite loading operations. May slow down the game.");
         _LogSpriteDumping = config.Bind("Logging", "LogSpriteDumping", false, "Enable detailed logging of sprite dumping operations. May slow down the game.");
         _LogSpriteWarnings = config.Bind("Logging", "LogSpriteWarnings", false, "Enable logging of warnings related to sprite loading and dumping.");
+        _EnablePerformanceTimers = config.Bind("Logging", "EnablePerformanceTimers", false, "Measure and log the time taken for sprite loading and dumping operations. May impact performance.");
     }
 }
