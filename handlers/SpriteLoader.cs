@@ -11,8 +11,8 @@ namespace Patchwork.Handlers;
 /// </summary>
 public static class SpriteLoader
 {
-    public static string LoadPath { get { return Path.Combine(Plugin.Config.DataBasePath, "Sprites"); } }
-    public static string AtlasLoadPath { get { return Path.Combine(Plugin.Config.DataBasePath, "Spritesheets"); } }
+    public static string LoadPath { get { return Path.Combine(Plugin.BasePath, "Sprites"); } }
+    public static string AtlasLoadPath { get { return Path.Combine(Plugin.BasePath, "Spritesheets"); } }
 
     private static readonly Dictionary<string, HashSet<string>> LoadedSprites = new();
 
