@@ -22,79 +22,86 @@ public static class T2DHandler
             return;
 
         if (Plugin.Config.DumpSprites && !string.IsNullOrEmpty(value.name) && !string.IsNullOrEmpty(value.texture.name))
-        {
-            if (value.texture.name.Contains("-BC7-"))
-            {
-                int width = (int)value.rect.width;
-                int height = (int)value.rect.height;
-                int renderLayer = 31;
-
-                GameObject spriteGO = new GameObject("TempSpriteRenderer");
-                var spriteRenderer = spriteGO.AddComponent<SpriteRenderer>();
-                spriteRenderer.sprite = value;
-                spriteGO.layer = renderLayer;
-                spriteGO.transform.position = Vector3.zero;
-
-                GameObject camGO = new GameObject("TempCamera");
-                Camera cam = camGO.AddComponent<Camera>();
-                cam.clearFlags = CameraClearFlags.SolidColor;
-                cam.backgroundColor = new Color(0, 0, 0, 0);
-                cam.orthographic = true;
-                cam.cullingMask = 1 << renderLayer;
-                cam.orthographicSize = height / value.pixelsPerUnit / 2f;
-                cam.transform.position = new Vector3(0, 0, -10);
-
-                RenderTexture rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
-                rt.filterMode = FilterMode.Point;
-                cam.targetTexture = rt;
-
-                cam.Render();
-                var previous = RenderTexture.active;
-                RenderTexture.active = rt;
-                Texture2D spriteTex = new Texture2D(width, height, TextureFormat.ARGB32, false);
-                spriteTex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-                spriteTex.Apply();
-
-                RenderTexture.active = previous;
-                cam.targetTexture = null;
-                Object.DestroyImmediate(rt);
-                Object.DestroyImmediate(spriteGO);
-                Object.DestroyImmediate(camGO);
-
-                // Split at -BC7- and remove last hyphen part
-                string cleanName = CleanTextureName(value.texture.name);
-                string saveDir = Path.Combine(T2DDumpPath, cleanName);
-                IOUtil.EnsureDirectoryExists(saveDir);
-                string savePath = Path.Combine(saveDir, value.name + ".png");
-                if (!File.Exists(savePath))
-                {
-                    byte[] pngData = spriteTex.EncodeToPNG();
-                    File.WriteAllBytes(savePath, pngData);
-                    if (Plugin.Config.LogSpriteLoading)
-                        Plugin.Logger.LogInfo($"Dumped T2D sprite {value.name} from texture {value.texture.name} to {savePath}");
-                }
-            }
-        }
+            HandleDump(__instance, value);
 
         if (Plugin.Config.LoadSprites)
-        {
-            if (LoadedT2DSprites.ContainsKey(value.name))
-            {
-                __instance.sprite = LoadedT2DSprites[value.name];
-                return;
-            }
-            if (value.texture.name.Contains("-BC7-"))
-            {
-                Texture2D spriteTex = FindT2DSprite(CleanTextureName(value.texture.name), value.name);
-                if (spriteTex == null)
-                    return;
+            HandleLoad(__instance, value);
+    }
 
-                Sprite newSprite = Sprite.Create(spriteTex, new Rect(0, 0, spriteTex.width, spriteTex.height), new Vector2(0.5f, 0.5f), value.pixelsPerUnit);
-                LoadedT2DSprites[value.name] = newSprite;
-                __instance.sprite = newSprite;
-                if (Plugin.Config.LogSpriteLoading)
-                    Plugin.Logger.LogInfo($"Loaded T2D sprite {value.name} from custom PNG");
-            }
+    private static void HandleLoad(SpriteRenderer spriteRenderer, Sprite sprite)
+    {
+        if (LoadedT2DSprites.ContainsKey(sprite.name))
+        {
+            spriteRenderer.sprite = LoadedT2DSprites[sprite.name];
+            return;
+        }
+        
+        if (sprite.texture.name.Contains("-BC7-"))
+        {
+            Texture2D spriteTex = FindT2DSprite(CleanTextureName(sprite.texture.name), sprite.name);
+            if (spriteTex == null)
+                return;
+
+            Sprite newSprite = Sprite.Create(spriteTex, new Rect(0, 0, spriteTex.width, spriteTex.height), new Vector2(0.5f, 0.5f), sprite.pixelsPerUnit);
+            LoadedT2DSprites[sprite.name] = newSprite;
+            spriteRenderer.sprite = newSprite;
+            if (Plugin.Config.LogSpriteLoading)
+                Plugin.Logger.LogInfo($"Loaded T2D sprite {sprite.name} from custom PNG");
+        }
+    }
+
+    private static void HandleDump(SpriteRenderer spriteRenderer, Sprite sprite)
+    {
+        if (sprite.texture.name.Contains("-BC7-"))
+        {
+            string cleanName = CleanTextureName(sprite.texture.name);
+            string saveDir = Path.Combine(T2DDumpPath, cleanName);
+            IOUtil.EnsureDirectoryExists(saveDir);
+            string savePath = Path.Combine(saveDir, sprite.name + ".png");
+
+            if(File.Exists(savePath))
+                return;
+
+            int width = (int)sprite.rect.width;
+            int height = (int)sprite.rect.height;
+            int renderLayer = 31;
+
+            GameObject spriteGO = new GameObject("TempSpriteRenderer");
+            var tempSpriteRenderer = spriteGO.AddComponent<SpriteRenderer>();
+            tempSpriteRenderer.sprite = sprite;
+            spriteGO.layer = renderLayer;
+            spriteGO.transform.position = Vector3.zero;
+
+            GameObject camGO = new GameObject("TempCamera");
+            Camera cam = camGO.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0, 0, 0, 0);
+            cam.orthographic = true;
+            cam.cullingMask = 1 << renderLayer;
+            cam.orthographicSize = height / sprite.pixelsPerUnit / 2f;
+            cam.transform.position = new Vector3(0, 0, -10);
+
+            RenderTexture rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
+            rt.filterMode = FilterMode.Point;
+            cam.targetTexture = rt;
+
+            cam.Render();
+            var previous = RenderTexture.active;
+            RenderTexture.active = rt;
+            Texture2D spriteTex = new Texture2D(width, height, TextureFormat.ARGB32, false);
+            spriteTex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+            spriteTex.Apply();
+
+            RenderTexture.active = previous;
+            cam.targetTexture = null;
+            Object.DestroyImmediate(rt);
+            Object.DestroyImmediate(spriteGO);
+            Object.DestroyImmediate(camGO);
+
+            byte[] pngData = spriteTex.EncodeToPNG();
+            File.WriteAllBytes(savePath, pngData);
+            if (Plugin.Config.LogSpriteLoading)
+                Plugin.Logger.LogInfo($"Dumped T2D sprite {sprite.name} from texture {sprite.texture.name} to {savePath}");
         }
     }
 
