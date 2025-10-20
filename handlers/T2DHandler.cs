@@ -18,25 +18,48 @@ public static class T2DHandler
     [HarmonyPatch(typeof(SpriteRenderer), nameof(SpriteRenderer.sprite), MethodType.Setter)]
     public static void SetSpritePostfix(SpriteRenderer __instance, Sprite value)
     {
-        if (__instance == null || value == null)
+        if (__instance == null || value == null || __instance.gameObject.name == "TempSpriteRenderer")
             return;
 
         if (Plugin.Config.DumpSprites && !string.IsNullOrEmpty(value.name) && !string.IsNullOrEmpty(value.texture.name))
         {
             if (value.texture.name.Contains("-BC7-"))
             {
-                Rect spriteRect = value.textureRect;
-                Texture2D spriteTex = new((int)spriteRect.width, (int)spriteRect.height, TextureFormat.RGBA32, false);
-                RenderTexture previous = RenderTexture.active;
-                RenderTexture rt = TexUtil.GetReadable(value.texture);
+                int width = (int)value.rect.width;
+                int height = (int)value.rect.height;
+                int renderLayer = 31;
+
+                GameObject spriteGO = new GameObject("TempSpriteRenderer");
+                var spriteRenderer = spriteGO.AddComponent<SpriteRenderer>();
+                spriteRenderer.sprite = value;
+                spriteGO.layer = renderLayer;
+                spriteGO.transform.position = Vector3.zero;
+
+                GameObject camGO = new GameObject("TempCamera");
+                Camera cam = camGO.AddComponent<Camera>();
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = new Color(0, 0, 0, 0);
+                cam.orthographic = true;
+                cam.cullingMask = 1 << renderLayer;
+                cam.orthographicSize = height / value.pixelsPerUnit / 2f;
+                cam.transform.position = new Vector3(0, 0, -10);
+
+                RenderTexture rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
+                rt.filterMode = FilterMode.Point;
+                cam.targetTexture = rt;
+
+                cam.Render();
+                var previous = RenderTexture.active;
                 RenderTexture.active = rt;
-                GL.PushMatrix();
-                GL.LoadPixelMatrix(0, rt.width, rt.height, 0);
-                spriteTex.ReadPixels(new Rect(spriteRect.x, spriteRect.y, spriteRect.width, spriteRect.height), 0, 0);
+                Texture2D spriteTex = new Texture2D(width, height, TextureFormat.ARGB32, false);
+                spriteTex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
                 spriteTex.Apply();
-                GL.PopMatrix();
+
                 RenderTexture.active = previous;
-                RenderTexture.ReleaseTemporary(rt);
+                cam.targetTexture = null;
+                Object.DestroyImmediate(rt);
+                Object.DestroyImmediate(spriteGO);
+                Object.DestroyImmediate(camGO);
 
                 // Split at -BC7- and remove last hyphen part
                 string cleanName = CleanTextureName(value.texture.name);
