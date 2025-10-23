@@ -166,6 +166,15 @@ public static class T2DHandler
             .Where(f => Path.GetDirectoryName(f).EndsWith("T2D"));
         if (files.Any())
             return TexUtil.LoadFromPNG(files.First());
+
+        foreach (var packPath in Plugin.PluginPackPaths)
+        {
+            var packFiles = Directory.GetFiles(Path.Combine(packPath, "Sprites"), spriteName + ".png", SearchOption.AllDirectories)
+                .Where(f => Path.GetDirectoryName(f).EndsWith("T2D"));
+            if (packFiles.Any())
+                return TexUtil.LoadFromPNG(packFiles.First());
+        }
+
         return null;
     }
 
@@ -175,6 +184,15 @@ public static class T2DHandler
             .Where(f => Path.GetDirectoryName(f).EndsWith(Path.Combine("T2D", texName)));
         if (files.Any())
             return TexUtil.LoadFromPNG(files.First());
+
+        foreach (var packPath in Plugin.PluginPackPaths)
+        {
+            var packFiles = Directory.GetFiles(Path.Combine(packPath, "Sprites"), spriteName + ".png", SearchOption.AllDirectories)
+                .Where(f => Path.GetDirectoryName(f).EndsWith(Path.Combine("T2D", texName)));
+            if (packFiles.Any())
+                return TexUtil.LoadFromPNG(packFiles.First());
+        }
+
         return null;
     }
 

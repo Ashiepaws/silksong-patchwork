@@ -83,6 +83,15 @@ public static class SpriteLoader
             .Where(f => Path.GetDirectoryName(f).EndsWith(Path.Combine(collectionName, materialName)));
         if (files.Any())
             return TexUtil.LoadFromPNG(files.First());
+
+        foreach (var packPath in Plugin.PluginPackPaths)
+        {
+            var packFiles = Directory.GetFiles(Path.Combine(packPath, "Sprites"), $"{spriteName}.png", SearchOption.AllDirectories)
+                .Where(f => Path.GetDirectoryName(f).EndsWith(Path.Combine(collectionName, materialName)));
+            if (packFiles.Any())
+                return TexUtil.LoadFromPNG(packFiles.First());
+        }
+
         return null;
     }
 
@@ -98,6 +107,21 @@ public static class SpriteLoader
             Object.Destroy(tex2d);
             return rt;
         }
+
+        foreach (var packPath in Plugin.PluginPackPaths)
+        {
+            var packFiles = Directory.GetFiles(Path.Combine(packPath, "Spritesheets"), $"{materialName}.png", SearchOption.AllDirectories)
+                .Where(f => Path.GetDirectoryName(f).EndsWith(collection.name));
+            if (packFiles.Any())
+            {
+                var tex2d = TexUtil.LoadFromPNG(packFiles.First());
+                RenderTexture rt = RenderTexture.GetTemporary(tex2d.width, tex2d.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+                Graphics.Blit(tex2d, rt);
+                Object.Destroy(tex2d);
+                return rt;
+            }
+        }
+
         var mat = collection.materials.FirstOrDefault(m => m.name.StartsWith(materialName + " ") || m.name == materialName);
         return TexUtil.GetReadable(mat?.mainTexture);
     }

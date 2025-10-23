@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -18,12 +20,16 @@ public class Plugin : BaseUnityPlugin
 
     public static string BasePath { get { return Path.Combine(Paths.PluginPath, "Patchwork"); } }
 
+    public static HashSet<string> PluginPackPaths = new();
+
     private void Awake()
     {
         // Plugin startup logic
         Logger = base.Logger;
         Config = new PatchworkConfig(base.Config);
         Logger.LogInfo($"Patchwork is loaded! Version: {MyPluginInfo.PLUGIN_VERSION}");
+
+        ScanPluginPacks();
 
         TexUtil.Initialize();
         InitializeFolders();
@@ -56,6 +62,17 @@ public class Plugin : BaseUnityPlugin
 
         Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
         harmony.PatchAll();
+    }
+
+    private void ScanPluginPacks()
+    {
+        Directory.GetDirectories(BepInEx.Paths.PluginPath, "Patchwork", SearchOption.AllDirectories).ToList().ForEach(dir =>
+        {
+            if (BasePath.Equals(dir))
+                return;
+            Logger.LogDebug($"Found Patchwork plugin pack at {dir}");
+            PluginPackPaths.Add(dir);
+        });
     }
 
     private void Update()
