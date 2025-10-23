@@ -70,7 +70,7 @@ public static class SpriteDumper
                     var prev = RenderTexture.active;
                     RenderTexture.active = rotated;
                     GL.PushMatrix();
-                    GL.LoadPixelMatrix(0, rotated.width, rotated.height, 0);
+                    GL.LoadPixelMatrix(0, rotated.height, rotated.width, 0);
 
                     Vector2 uBasis, vBasis;
                     switch (def.flipped)
