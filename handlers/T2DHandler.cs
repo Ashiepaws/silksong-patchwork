@@ -13,6 +13,7 @@ public static class T2DHandler
     public static string T2DDumpPath { get { return Path.Combine(SpriteDumper.DumpPath, "T2D"); } }
 
     private static readonly Dictionary<string, Sprite> LoadedT2DSprites = new();
+    private static readonly Dictionary<string, HashSet<string>> SpriteAtlasMap = new();
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(SpriteRenderer), nameof(SpriteRenderer.sprite), MethodType.Setter)]
@@ -26,6 +27,21 @@ public static class T2DHandler
 
         if (Plugin.Config.LoadSprites)
             HandleLoad(__instance, value);
+    }
+
+    public static void InvalidateCache(string spriteName)
+    {
+        if (LoadedT2DSprites.Remove(spriteName))
+            Plugin.Logger.LogDebug($"Invalidated T2D sprite cache for {spriteName}");
+        if (SpriteAtlasMap.ContainsKey(spriteName))
+        {
+            foreach (var sprName in SpriteAtlasMap[spriteName])
+            {
+                if (LoadedT2DSprites.Remove(sprName))
+                    Plugin.Logger.LogDebug($"Invalidated T2D sprite cache for {sprName} due to atlas change {spriteName}");
+            }
+            SpriteAtlasMap.Remove(spriteName);
+        }
     }
 
     private static void HandleLoad(SpriteRenderer spriteRenderer, Sprite sprite)
@@ -47,6 +63,10 @@ public static class T2DHandler
             spriteRenderer.sprite = newSprite;
             if (Plugin.Config.LogSpriteLoading)
                 Plugin.Logger.LogInfo($"Loaded T2D sprite {sprite.name} (Atlas texture {sprite.texture.name})");
+
+            if(!SpriteAtlasMap.ContainsKey(sprite.texture.name))
+                SpriteAtlasMap[sprite.texture.name] = new HashSet<string>();
+            SpriteAtlasMap[sprite.texture.name].Add(sprite.name);
         }
         else
         {

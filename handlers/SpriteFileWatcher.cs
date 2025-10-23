@@ -40,6 +40,15 @@ public class SpriteFileWatcher
     {
         string relativePath = Path.GetRelativePath(SpriteLoader.LoadPath, e.FullPath);
         string[] pathParts = relativePath.Split(Path.DirectorySeparatorChar);
+
+        if (pathParts[^2] == "T2D" || (pathParts.Length >= 3 && pathParts[^3] == "T2D"))
+        {
+            T2DHandler.InvalidateCache(Path.GetFileNameWithoutExtension(pathParts[^1]));
+            if (Plugin.Config.ReloadSceneOnChange)
+                GameManager.instance.LoadScene(SceneManager.GetActiveScene().name);
+            return;
+        }
+
         if (pathParts.Length < 3)
             return;
 
