@@ -35,8 +35,8 @@ public static class T2DHandler
             spriteRenderer.sprite = LoadedT2DSprites[sprite.name];
             return;
         }
-        
-        if (sprite.texture.name.Contains("-BC7-"))
+
+        if (sprite.texture.name.Contains("-BC7-") || sprite.texture.name.Contains("DXT5|BC3-"))
         {
             Texture2D spriteTex = FindT2DSprite(CleanTextureName(sprite.texture.name), sprite.name);
             if (spriteTex == null)
@@ -46,20 +46,37 @@ public static class T2DHandler
             LoadedT2DSprites[sprite.name] = newSprite;
             spriteRenderer.sprite = newSprite;
             if (Plugin.Config.LogSpriteLoading)
-                Plugin.Logger.LogInfo($"Loaded T2D sprite {sprite.name} from custom PNG");
+                Plugin.Logger.LogInfo($"Loaded T2D sprite {sprite.name} (Atlas texture {sprite.texture.name})");
+        }
+        else
+        {
+            if (LoadedT2DSprites.ContainsKey(sprite.texture.name))
+            {
+                spriteRenderer.sprite = LoadedT2DSprites[sprite.texture.name];
+                return;
+            }
+            
+            Texture2D spriteTex = FindT2DSprite(sprite.texture.name);
+            if (spriteTex == null)
+                return;
+            Sprite newSprite = Sprite.Create(spriteTex, new Rect(0, 0, spriteTex.width, spriteTex.height), new Vector2(0.5f, 0.5f), sprite.pixelsPerUnit);
+            LoadedT2DSprites[sprite.texture.name] = newSprite;
+            spriteRenderer.sprite = newSprite;
+            if (Plugin.Config.LogSpriteLoading)
+                Plugin.Logger.LogInfo($"Loaded T2D texture {sprite.texture.name} (Standalone texture)");
         }
     }
 
     private static void HandleDump(SpriteRenderer spriteRenderer, Sprite sprite)
     {
-        if (sprite.texture.name.Contains("-BC7-"))
+        if (sprite.texture.name.Contains("-BC7-") || sprite.texture.name.Contains("DXT5|BC3-"))
         {
             string cleanName = CleanTextureName(sprite.texture.name);
             string saveDir = Path.Combine(T2DDumpPath, cleanName);
             IOUtil.EnsureDirectoryExists(saveDir);
             string savePath = Path.Combine(saveDir, sprite.name + ".png");
 
-            if(File.Exists(savePath))
+            if (File.Exists(savePath))
                 return;
 
             int width = (int)sprite.rect.width;
@@ -100,8 +117,26 @@ public static class T2DHandler
 
             byte[] pngData = spriteTex.EncodeToPNG();
             File.WriteAllBytes(savePath, pngData);
-            if (Plugin.Config.LogSpriteLoading)
+            if (Plugin.Config.LogSpriteDumping)
                 Plugin.Logger.LogInfo($"Dumped T2D sprite {sprite.name} from texture {sprite.texture.name} to {savePath}");
+        }
+        else
+        {
+            RenderTexture spriteTex = TexUtil.GetReadable(sprite.texture);
+            Texture2D readableTex = new Texture2D(spriteTex.width, spriteTex.height, TextureFormat.ARGB32, false);
+            var previous = RenderTexture.active;
+            RenderTexture.active = spriteTex;
+            readableTex.ReadPixels(new Rect(0, 0, spriteTex.width, spriteTex.height), 0, 0);
+            readableTex.Apply();
+            RenderTexture.active = previous;
+
+            byte[] pngData = readableTex.EncodeToPNG();
+            string savePath = Path.Combine(T2DDumpPath, sprite.texture.name + ".png");
+            if (File.Exists(savePath))
+                return;
+            File.WriteAllBytes(savePath, pngData);
+            if (Plugin.Config.LogSpriteDumping)
+                Plugin.Logger.LogInfo($"Dumped T2D texture {sprite.texture.name} to {savePath}");
         }
     }
 
@@ -128,6 +163,12 @@ public static class T2DHandler
         if (textureName.Contains("-BC7-"))
         {
             string cleanName = textureName.Split(["-BC7-"], System.StringSplitOptions.None)[1];
+            cleanName = string.Join("-", cleanName.Split('-').Take(cleanName.Split('-').Length - 1));
+            return cleanName;
+        }
+        if (textureName.Contains("DXT5|BC3-"))
+        {
+            string cleanName = textureName.Split(["DXT5|BC3-"], System.StringSplitOptions.None)[1];
             cleanName = string.Join("-", cleanName.Split('-').Take(cleanName.Split('-').Length - 1));
             return cleanName;
         }
