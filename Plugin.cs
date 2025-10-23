@@ -18,7 +18,8 @@ public class Plugin : BaseUnityPlugin
     internal static new PatchworkConfig Config;
     internal static SpriteFileWatcher FileWatcher;
 
-    public static string BasePath { get { return Path.Combine(Paths.PluginPath, "Patchwork"); } }
+    private static string PatchworkFolderName = "Patchwork";
+    public static string BasePath { get { return Path.Combine(Paths.PluginPath, PatchworkFolderName); } }
 
     public static HashSet<string> PluginPackPaths = new();
 
@@ -29,6 +30,7 @@ public class Plugin : BaseUnityPlugin
         Config = new PatchworkConfig(base.Config);
         Logger.LogInfo($"Patchwork is loaded! Version: {MyPluginInfo.PLUGIN_VERSION}");
 
+        FindPatchworkFolder();
         ScanPluginPacks();
 
         TexUtil.Initialize();
@@ -62,6 +64,15 @@ public class Plugin : BaseUnityPlugin
 
         Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
         harmony.PatchAll();
+    }
+
+    private void FindPatchworkFolder()
+    {
+        Directory.GetFiles(Paths.PluginPath, "Patchwork.dll", SearchOption.AllDirectories).ToList().ForEach(file =>
+        {
+            PatchworkFolderName = Path.GetFileName(Path.GetDirectoryName(file));
+            Logger.LogDebug($"Found Patchwork folder name: {PatchworkFolderName}");
+        });
     }
 
     private void ScanPluginPacks()

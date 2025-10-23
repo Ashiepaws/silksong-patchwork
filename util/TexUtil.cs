@@ -10,7 +10,7 @@ public static class TexUtil
 
     public static void Initialize()
     {
-        string bundlePath = Path.Combine(Paths.PluginPath, "Patchwork", "patchwork.assetbundle");
+        string bundlePath = Path.Combine(Plugin.BasePath, "patchwork.assetbundle");
         AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
         var RotateShader = bundle.LoadAsset<Shader>("Assets/Patchwork/Rotate.shader");
         RotateMaterial = new Material(RotateShader);
