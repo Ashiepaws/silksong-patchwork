@@ -169,6 +169,8 @@ public static class T2DHandler
 
         foreach (var packPath in Plugin.PluginPackPaths)
         {
+            if (!Directory.Exists(Path.Combine(packPath, "Sprites")))
+                continue;
             var packFiles = Directory.GetFiles(Path.Combine(packPath, "Sprites"), spriteName + ".png", SearchOption.AllDirectories)
                 .Where(f => Path.GetDirectoryName(f).EndsWith("T2D"));
             if (packFiles.Any())
@@ -187,6 +189,8 @@ public static class T2DHandler
 
         foreach (var packPath in Plugin.PluginPackPaths)
         {
+            if (!Directory.Exists(Path.Combine(packPath, "Sprites")))
+                continue;
             var packFiles = Directory.GetFiles(Path.Combine(packPath, "Sprites"), spriteName + ".png", SearchOption.AllDirectories)
                 .Where(f => Path.GetDirectoryName(f).EndsWith(Path.Combine("T2D", texName)));
             if (packFiles.Any())

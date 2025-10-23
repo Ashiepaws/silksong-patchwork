@@ -86,6 +86,8 @@ public static class SpriteLoader
 
         foreach (var packPath in Plugin.PluginPackPaths)
         {
+            if (!Directory.Exists(Path.Combine(packPath, "Sprites")))
+                continue;
             var packFiles = Directory.GetFiles(Path.Combine(packPath, "Sprites"), $"{spriteName}.png", SearchOption.AllDirectories)
                 .Where(f => Path.GetDirectoryName(f).EndsWith(Path.Combine(collectionName, materialName)));
             if (packFiles.Any())
@@ -110,6 +112,8 @@ public static class SpriteLoader
 
         foreach (var packPath in Plugin.PluginPackPaths)
         {
+            if(!Directory.Exists(Path.Combine(packPath, "Spritesheets")))
+                continue;
             var packFiles = Directory.GetFiles(Path.Combine(packPath, "Spritesheets"), $"{materialName}.png", SearchOption.AllDirectories)
                 .Where(f => Path.GetDirectoryName(f).EndsWith(collection.name));
             if (packFiles.Any())
