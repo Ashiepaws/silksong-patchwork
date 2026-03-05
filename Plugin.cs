@@ -56,6 +56,7 @@ public class Plugin : BaseUnityPlugin
                 var spriteCollections = Resources.FindObjectsOfTypeAll<tk2dSpriteCollectionData>();
                 foreach (var collection in spriteCollections)
                     SpriteDumper.DumpCollection(collection);
+                T2DHandler.DumpAllT2DSprites();
                 SceneTraverser.OnDumpCompleted();
                 Logger.LogInfo($"Finished dumping sprites for scene {scene.name}");
             };
@@ -135,6 +136,11 @@ public class Plugin : BaseUnityPlugin
 
         if (++_frameCounter % 30 == 0)
         T2DHandler.CheckForUninitializedSprites();
+    }
+
+    private void LateUpdate()
+    {
+        T2DHandler.EnforceT2DReplacements();
     }
 
     private void OnGUI()

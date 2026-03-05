@@ -16,15 +16,18 @@ public static class T2DHandler
     private static readonly Dictionary<string, Sprite> LoadedT2DSprites = new();
     private static readonly Dictionary<string, HashSet<string>> SpriteAtlasMap = new();
 
-    private static readonly HashSet<int> InitializedSpriteRenderers = new();
+    private static readonly Dictionary<int, string> TrackedSpriteNames = new();
+    private static readonly HashSet<SpriteRenderer> KnownT2DSpriteRenderers = new();
+    private static readonly HashSet<Image> KnownT2DImages = new();
+    private static bool _enforcing = false;
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(SpriteRenderer), nameof(SpriteRenderer.sprite), MethodType.Setter)]
     public static void SetSpritePostfix(SpriteRenderer __instance, Sprite value)
     {
-        if (__instance == null || value == null || __instance.gameObject.name == "TempSpriteRenderer")
+        if (_enforcing || __instance == null || value == null || __instance.gameObject.name == "TempSpriteRenderer")
             return;
-        InitializedSpriteRenderers.Add(__instance.GetInstanceID());
+        TrackedSpriteNames[__instance.GetInstanceID()] = value.name;
 
         if (Plugin.Config.DumpSprites && !string.IsNullOrEmpty(value.name) && !string.IsNullOrEmpty(value.texture.name))
             HandleDump(value);
@@ -33,7 +36,7 @@ public static class T2DHandler
         var stackTrace = new System.Diagnostics.StackTrace();
         if (stackTrace.GetFrames().Any(f => f.GetMethod().Name == nameof(HandleLoad)))
             return;
-        
+
         HandleLoad(__instance, value);
     }
 
@@ -41,9 +44,9 @@ public static class T2DHandler
     [HarmonyPatch(typeof(Image), nameof(Image.sprite), MethodType.Setter)]
     public static void SetImageSpritePostfix(Image __instance, Sprite value)
     {
-        if (__instance == null || value == null)
+        if (_enforcing || __instance == null || value == null)
             return;
-        InitializedSpriteRenderers.Add(__instance.GetInstanceID());
+        TrackedSpriteNames[__instance.GetInstanceID()] = value.name;
 
         if (Plugin.Config.DumpSprites && !string.IsNullOrEmpty(value.name) && !string.IsNullOrEmpty(value.texture.name))
             HandleDump(value);
@@ -63,9 +66,12 @@ public static class T2DHandler
             if (spriteRenderer == null || spriteRenderer.sprite == null)
                 continue;
 
-            if (!InitializedSpriteRenderers.Contains(spriteRenderer.GetInstanceID()))
+            int id = spriteRenderer.GetInstanceID();
+            string currentName = spriteRenderer.sprite.name;
+
+            if (!TrackedSpriteNames.TryGetValue(id, out string lastSprite) || lastSprite != currentName)
             {
-                InitializedSpriteRenderers.Add(spriteRenderer.GetInstanceID());
+                TrackedSpriteNames[id] = currentName;
                 spriteRenderer.sprite = spriteRenderer.sprite;
             }
         }
@@ -75,17 +81,55 @@ public static class T2DHandler
             if (image == null || image.sprite == null)
                 continue;
 
-            if (!InitializedSpriteRenderers.Contains(image.GetInstanceID()))
+            int id = image.GetInstanceID();
+            string currentName = image.sprite.name;
+
+            if (!TrackedSpriteNames.TryGetValue(id, out string lastSprite) || lastSprite != currentName)
             {
-                InitializedSpriteRenderers.Add(image.GetInstanceID());
+                TrackedSpriteNames[id] = currentName;
                 image.sprite = image.sprite;
             }
         }
     }
 
+    public static void EnforceT2DReplacements()
+    {
+        _enforcing = true;
+        try
+        {
+            KnownT2DSpriteRenderers.RemoveWhere(sr => sr == null);
+            foreach (var sr in KnownT2DSpriteRenderers)
+            {
+                if (sr.sprite == null) continue;
+                if (LoadedT2DSprites.TryGetValue(sr.sprite.name, out var replacement) && sr.sprite != replacement)
+                    sr.sprite = replacement;
+            }
+
+            KnownT2DImages.RemoveWhere(img => img == null);
+            foreach (var img in KnownT2DImages)
+            {
+                if (img.sprite == null) continue;
+                if (LoadedT2DSprites.TryGetValue(img.sprite.name, out var replacement) && img.sprite != replacement)
+                    img.sprite = replacement;
+            }
+        }
+        finally
+        {
+            _enforcing = false;
+        }
+    }
+
     public static void ReloadSpritesInScene()
     {
-        LoadedT2DSprites.Clear();
+        // Destroy old sprites before clearing cache
+        foreach (var sprite in LoadedT2DSprites.Values)
+        {
+            if (sprite != null && sprite.texture != null)
+                Object.Destroy(sprite.texture);
+            if (sprite != null)
+                Object.Destroy(sprite);
+        }
+        LoadedT2DSprites.Clear();  
         foreach (var spriteRenderer in Object.FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None))
         {
             if (spriteRenderer == null || spriteRenderer.sprite == null)
@@ -102,11 +146,29 @@ public static class T2DHandler
 
     public static void InvalidateCache(string spriteName)
     {
-        LoadedT2DSprites.Remove(spriteName);
-        if (SpriteAtlasMap.ContainsKey(spriteName))
+        // Destroy before removing from cache
+        if (LoadedT2DSprites.TryGetValue(spriteName, out var sprite))
         {
-            foreach (var sprName in SpriteAtlasMap[spriteName])
-                LoadedT2DSprites.Remove(sprName);
+            if (sprite != null && sprite.texture != null)
+                Object.Destroy(sprite.texture);
+            if (sprite != null)
+                Object.Destroy(sprite);
+            LoadedT2DSprites.Remove(spriteName);
+        }
+        
+        if (SpriteAtlasMap.TryGetValue(spriteName, out var atlasSprites))
+        {
+            foreach (var sprName in atlasSprites)
+            {
+                if (LoadedT2DSprites.TryGetValue(sprName, out var atlasSprite))
+                {
+                    if (atlasSprite != null && atlasSprite.texture != null)
+                        Object.Destroy(atlasSprite.texture);
+                    if (atlasSprite != null)
+                        Object.Destroy(atlasSprite);
+                    LoadedT2DSprites.Remove(sprName);
+                }
+            }
             SpriteAtlasMap.Remove(spriteName);
         }
     }
@@ -123,6 +185,7 @@ public static class T2DHandler
         if (LoadedT2DSprites.ContainsKey(sprite.name))
         {
             spriteSetter.Invoke(spriteContainer, [LoadedT2DSprites[sprite.name]]);
+            TrackT2DContainer(spriteContainer);
             return;
         }
         
@@ -135,8 +198,13 @@ public static class T2DHandler
 
             Sprite newSprite = Sprite.Create(spriteTex, new Rect(0, 0, spriteTex.width, spriteTex.height), new Vector2(0.5f, 0.5f), sprite.pixelsPerUnit);
             newSprite.name = sprite.name;
+            
+            // Note: spriteTex ownership transfers to newSprite - don't destroy it here
+            // The texture will be destroyed when the cache is invalidated
+            
             LoadedT2DSprites[sprite.name] = newSprite;
             spriteSetter.Invoke(spriteContainer, [newSprite]);
+            TrackT2DContainer(spriteContainer);
 
             if(!SpriteAtlasMap.ContainsKey(sprite.texture.name))
                 SpriteAtlasMap[sprite.texture.name] = new HashSet<string>();
@@ -147,6 +215,7 @@ public static class T2DHandler
             if (LoadedT2DSprites.ContainsKey(sprite.texture.name))
             {
                 spriteSetter.Invoke(spriteContainer, [LoadedT2DSprites[sprite.texture.name]]);
+                TrackT2DContainer(spriteContainer);
                 return;
             }
             
@@ -156,8 +225,32 @@ public static class T2DHandler
             spriteTex.name = sprite.texture.name;
             Sprite newSprite = Sprite.Create(spriteTex, new Rect(0, 0, spriteTex.width, spriteTex.height), new Vector2(0.5f, 0.5f), sprite.pixelsPerUnit);
             newSprite.name = sprite.name;
+            
+            // Texture ownership transfers to sprite
             LoadedT2DSprites[sprite.texture.name] = newSprite;
             spriteSetter.Invoke(spriteContainer, [newSprite]);
+            TrackT2DContainer(spriteContainer);
+        }
+    }
+
+    private static void TrackT2DContainer(object spriteContainer)
+    {
+        if (spriteContainer is SpriteRenderer sr)
+            KnownT2DSpriteRenderers.Add(sr);
+        else if (spriteContainer is Image img)
+            KnownT2DImages.Add(img);
+    }
+
+    public static void DumpAllT2DSprites()
+    {
+        foreach (var sprite in Resources.FindObjectsOfTypeAll<Sprite>())
+        {
+            if (sprite == null || sprite.texture == null)
+                continue;
+            if (string.IsNullOrEmpty(sprite.name) || string.IsNullOrEmpty(sprite.texture.name))
+                continue;
+            if (sprite.texture.name.Contains("-BC7-") || sprite.texture.name.Contains("DXT5|BC3-"))
+                HandleDump(sprite);
         }
     }
 
@@ -178,60 +271,92 @@ public static class T2DHandler
             int renderLayer = 31;
 
             GameObject spriteGO = new GameObject("TempSpriteRenderer");
-            var tempSpriteRenderer = spriteGO.AddComponent<SpriteRenderer>();
-            tempSpriteRenderer.sprite = sprite;
-            spriteGO.layer = renderLayer;
-            spriteGO.transform.position = new Vector3(
-                (sprite.pivot.x - sprite.rect.width / 2) / sprite.pixelsPerUnit,
-                (sprite.pivot.y - sprite.rect.height / 2) / sprite.pixelsPerUnit,
-                0
-            );
+            SpriteRenderer tempSpriteRenderer = null;
+            GameObject camGO = null;
+            Camera cam = null;
+            RenderTexture rt = null;
+            Texture2D spriteTex = null;
 
-            GameObject camGO = new GameObject("TempCamera");
-            Camera cam = camGO.AddComponent<Camera>();
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0, 0, 0, 0);
-            cam.orthographic = true;
-            cam.cullingMask = 1 << renderLayer;
-            cam.orthographicSize = height / sprite.pixelsPerUnit / 2f;
-            cam.transform.position = new Vector3(0, 0, -10);
+            try
+            {
+                tempSpriteRenderer = spriteGO.AddComponent<SpriteRenderer>();
+                tempSpriteRenderer.sprite = sprite;
+                spriteGO.layer = renderLayer;
+                spriteGO.transform.position = new Vector3(
+                    (sprite.pivot.x - sprite.rect.width / 2) / sprite.pixelsPerUnit,
+                    (sprite.pivot.y - sprite.rect.height / 2) / sprite.pixelsPerUnit,
+                    0
+                );
 
-            RenderTexture rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
-            rt.filterMode = FilterMode.Point;
-            cam.targetTexture = rt;
+                camGO = new GameObject("TempCamera");
+                cam = camGO.AddComponent<Camera>();
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = new Color(0, 0, 0, 0);
+                cam.orthographic = true;
+                cam.cullingMask = 1 << renderLayer;
+                cam.orthographicSize = height / sprite.pixelsPerUnit / 2f;
+                cam.transform.position = new Vector3(0, 0, -10);
 
-            cam.Render();
-            var previous = RenderTexture.active;
-            RenderTexture.active = rt;
-            Texture2D spriteTex = new Texture2D(width, height, TextureFormat.ARGB32, false);
-            spriteTex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-            spriteTex.Apply();
+                rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
+                rt.filterMode = FilterMode.Point;
+                cam.targetTexture = rt;
 
-            RenderTexture.active = previous;
-            cam.targetTexture = null;
-            spriteGO.SetActive(false);
-            Object.DestroyImmediate(rt);
-            Object.DestroyImmediate(spriteGO);
-            Object.DestroyImmediate(camGO);
+                cam.Render();
+                var previous = RenderTexture.active;
+                RenderTexture.active = rt;
+                spriteTex = new Texture2D(width, height, TextureFormat.ARGB32, false);
+                spriteTex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+                spriteTex.Apply();
+                RenderTexture.active = previous;
 
-            byte[] pngData = spriteTex.EncodeToPNG();
-            File.WriteAllBytes(savePath, pngData);
+                byte[] pngData = spriteTex.EncodeToPNG();
+                File.WriteAllBytes(savePath, pngData);
+            }
+            finally
+            {
+                // Cleanup everything
+                if (cam != null)
+                    cam.targetTexture = null;
+                if (spriteGO != null)
+                    Object.DestroyImmediate(spriteGO);
+                if (camGO != null)
+                    Object.DestroyImmediate(camGO);
+                if (rt != null)
+                    Object.DestroyImmediate(rt);
+                if (spriteTex != null)
+                    Object.DestroyImmediate(spriteTex);
+            }
         }
         else
         {
-            RenderTexture spriteTex = TexUtil.GetReadable(sprite.texture);
-            Texture2D readableTex = new Texture2D(spriteTex.width, spriteTex.height, TextureFormat.ARGB32, false);
-            var previous = RenderTexture.active;
-            RenderTexture.active = spriteTex;
-            readableTex.ReadPixels(new Rect(0, 0, spriteTex.width, spriteTex.height), 0, 0);
-            readableTex.Apply();
-            RenderTexture.active = previous;
-
-            byte[] pngData = readableTex.EncodeToPNG();
             string savePath = Path.Combine(T2DDumpPath, sprite.texture.name + ".png");
             if (File.Exists(savePath))
                 return;
-            File.WriteAllBytes(savePath, pngData);
+
+            RenderTexture spriteRT = null;
+            Texture2D readableTex = null;
+
+            try
+            {
+                spriteRT = TexUtil.GetReadable(sprite.texture);
+                readableTex = new Texture2D(spriteRT.width, spriteRT.height, TextureFormat.ARGB32, false);
+                var previous = RenderTexture.active;
+                RenderTexture.active = spriteRT;
+                readableTex.ReadPixels(new Rect(0, 0, spriteRT.width, spriteRT.height), 0, 0);
+                readableTex.Apply();
+                RenderTexture.active = previous;
+
+                byte[] pngData = readableTex.EncodeToPNG();
+                File.WriteAllBytes(savePath, pngData);
+            }
+            finally
+            {
+                // Cleanup
+                if (spriteRT != null)
+                    RenderTexture.ReleaseTemporary(spriteRT);
+                if (readableTex != null)
+                    Object.DestroyImmediate(readableTex);
+            }
         }
     }
 
