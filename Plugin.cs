@@ -135,7 +135,10 @@ public class Plugin : BaseUnityPlugin
         AnimationController.Update();
 
         if (++_frameCounter % 30 == 0)
-        T2DHandler.CheckForUninitializedSprites();
+        {
+            T2DHandler.CheckForUninitializedSprites();
+            T2DHandler.CleanupDestroyedRenderers();
+        }
     }
 
     private void LateUpdate()

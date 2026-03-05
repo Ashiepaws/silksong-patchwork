@@ -94,22 +94,27 @@ public static class T2DHandler
 
     public static void EnforceT2DReplacements()
     {
+        if (KnownT2DSpriteRenderers.Count == 0 && KnownT2DImages.Count == 0)
+            return;
+
         _enforcing = true;
         try
         {
-            KnownT2DSpriteRenderers.RemoveWhere(sr => sr == null);
             foreach (var sr in KnownT2DSpriteRenderers)
             {
-                if (sr.sprite == null) continue;
-                if (LoadedT2DSprites.TryGetValue(sr.sprite.name, out var replacement) && sr.sprite != replacement)
+                if (sr == null) continue;
+                var sprite = sr.sprite;
+                if (sprite == null) continue;
+                if (LoadedT2DSprites.TryGetValue(sprite.name, out var replacement) && sprite != replacement)
                     sr.sprite = replacement;
             }
 
-            KnownT2DImages.RemoveWhere(img => img == null);
             foreach (var img in KnownT2DImages)
             {
-                if (img.sprite == null) continue;
-                if (LoadedT2DSprites.TryGetValue(img.sprite.name, out var replacement) && img.sprite != replacement)
+                if (img == null) continue;
+                var sprite = img.sprite;
+                if (sprite == null) continue;
+                if (LoadedT2DSprites.TryGetValue(sprite.name, out var replacement) && sprite != replacement)
                     img.sprite = replacement;
             }
         }
@@ -117,6 +122,12 @@ public static class T2DHandler
         {
             _enforcing = false;
         }
+    }
+
+    public static void CleanupDestroyedRenderers()
+    {
+        KnownT2DSpriteRenderers.RemoveWhere(sr => sr == null);
+        KnownT2DImages.RemoveWhere(img => img == null);
     }
 
     public static void ReloadSpritesInScene()
