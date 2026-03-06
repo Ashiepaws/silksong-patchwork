@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using BepInEx;
@@ -135,10 +135,7 @@ public class Plugin : BaseUnityPlugin
         AnimationController.Update();
 
         if (++_frameCounter % 30 == 0)
-        {
-            T2DHandler.CheckForUninitializedSprites();
-            T2DHandler.CleanupDestroyedRenderers();
-        }
+        T2DHandler.CheckForUninitializedSprites();
     }
 
     private void LateUpdate()
