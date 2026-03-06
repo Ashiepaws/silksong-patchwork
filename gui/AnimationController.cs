@@ -243,7 +243,7 @@ public static class AnimationController
         
         scrollPosition = GUILayout.BeginScrollView(scrollPosition);
         GUILayout.BeginVertical();
-        foreach (var kvp in Animators)
+        foreach (var kvp in Animators.OrderByDescending(k => k.Key == "Hero_Hornet(Clone)"))
         {
             string name = kvp.Key;
             tk2dSpriteAnimator animator = kvp.Value;
