@@ -21,23 +21,19 @@ public static class T2DHandler
     private static readonly HashSet<SpriteRenderer> KnownT2DSpriteRenderers = new();
     private static readonly HashSet<Image> KnownT2DImages = new();
     private static bool _enforcing = false;
+    private static bool _handling = false;
 
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(SpriteRenderer), nameof(SpriteRenderer.sprite), MethodType.Setter)]
     public static void SetSpritePostfix(SpriteRenderer __instance, Sprite value)
     {
-        if (_enforcing || __instance == null || value == null || __instance.gameObject.name == "TempSpriteRenderer")
+        if (_handling || _enforcing || __instance == null || value == null || __instance.gameObject.name == "TempSpriteRenderer")
             return;
         TrackedSpriteNames[__instance.GetInstanceID()] = value.name;
 
         if (Plugin.Config.DumpSprites && !string.IsNullOrEmpty(value.name) && !string.IsNullOrEmpty(value.texture.name))
             HandleDump(value);
-
-        // Check stack to avoid infinite loops
-        var stackTrace = new System.Diagnostics.StackTrace();
-        if (stackTrace.GetFrames().Any(f => f.GetMethod().Name == nameof(HandleLoad)))
-            return;
 
         HandleLoad(__instance, value);
     }
@@ -46,17 +42,12 @@ public static class T2DHandler
     [HarmonyPatch(typeof(Image), nameof(Image.sprite), MethodType.Setter)]
     public static void SetImageSpritePostfix(Image __instance, Sprite value)
     {
-        if (_enforcing || __instance == null || value == null)
+        if (_handling || _enforcing || __instance == null || value == null)
             return;
         TrackedSpriteNames[__instance.GetInstanceID()] = value.name;
 
         if (Plugin.Config.DumpSprites && !string.IsNullOrEmpty(value.name) && !string.IsNullOrEmpty(value.texture.name))
             HandleDump(value);
-
-        // Check stack to avoid infinite loops
-        var stackTrace = new System.Diagnostics.StackTrace();
-        if (stackTrace.GetFrames().Any(f => f.GetMethod().Name == nameof(HandleLoad)))
-            return;
 
         HandleLoad(__instance, value);
     }
@@ -255,6 +246,9 @@ public static class T2DHandler
 
     private static void HandleLoad(object spriteContainer, Sprite sprite)
     {
+        if (_handling)
+            return;
+
         var spriteSetter = spriteContainer.GetType().GetProperty("sprite").GetSetMethod();
         if (spriteSetter == null)
         {
@@ -262,54 +256,62 @@ public static class T2DHandler
             return;
         }
 
-        if (LoadedT2DSprites.ContainsKey(sprite.name))
+        _handling = true;
+        try
         {
-            spriteSetter.Invoke(spriteContainer, [LoadedT2DSprites[sprite.name]]);
-            TrackT2DContainer(spriteContainer);
-            return;
-        }
-        
-        if (sprite.texture.name.Contains("-BC7-") || sprite.texture.name.Contains("DXT5|BC3-"))
-        {
-            // Bulk-load all replacement textures for this atlas on first encounter (disk I/O)
-            if (!SpriteAtlasMap.ContainsKey(sprite.texture.name))
-                PreloadT2DAtlasTextures(sprite.texture.name, CleanTextureName(sprite.texture.name));
-
-            // Create sprite lazily with this sprite's correct pixelsPerUnit
-            if (PreloadedT2DTextures.TryGetValue(sprite.name, out var spriteTex))
+            if (LoadedT2DSprites.ContainsKey(sprite.name))
             {
-                Sprite newSprite = Sprite.Create(spriteTex,
-                    new Rect(0, 0, spriteTex.width, spriteTex.height),
-                    new Vector2(0.5f, 0.5f), sprite.pixelsPerUnit);
+                spriteSetter.Invoke(spriteContainer, [LoadedT2DSprites[sprite.name]]);
+                TrackT2DContainer(spriteContainer);
+                return;
+            }
+
+            if (sprite.texture.name.Contains("-BC7-") || sprite.texture.name.Contains("DXT5|BC3-"))
+            {
+                // Bulk-load all replacement textures for this atlas on first encounter (disk I/O)
+                if (!SpriteAtlasMap.ContainsKey(sprite.texture.name))
+                    PreloadT2DAtlasTextures(sprite.texture.name, CleanTextureName(sprite.texture.name));
+
+                // Create sprite lazily with this sprite's correct pixelsPerUnit
+                if (PreloadedT2DTextures.TryGetValue(sprite.name, out var spriteTex))
+                {
+                    Sprite newSprite = Sprite.Create(spriteTex,
+                        new Rect(0, 0, spriteTex.width, spriteTex.height),
+                        new Vector2(0.5f, 0.5f), sprite.pixelsPerUnit);
+                    newSprite.name = sprite.name;
+
+                    LoadedT2DSprites[sprite.name] = newSprite;
+                    PreloadedT2DTextures.Remove(sprite.name);
+
+                    spriteSetter.Invoke(spriteContainer, [newSprite]);
+                    TrackT2DContainer(spriteContainer);
+                }
+            }
+            else
+            {
+                if (LoadedT2DSprites.ContainsKey(sprite.texture.name))
+                {
+                    spriteSetter.Invoke(spriteContainer, [LoadedT2DSprites[sprite.texture.name]]);
+                    TrackT2DContainer(spriteContainer);
+                    return;
+                }
+
+                Texture2D spriteTex = FindT2DSprite(sprite.texture.name);
+                if (spriteTex == null)
+                    return;
+                spriteTex.name = sprite.texture.name;
+                Sprite newSprite = Sprite.Create(spriteTex, new Rect(0, 0, spriteTex.width, spriteTex.height), new Vector2(0.5f, 0.5f), sprite.pixelsPerUnit);
                 newSprite.name = sprite.name;
 
-                LoadedT2DSprites[sprite.name] = newSprite;
-                PreloadedT2DTextures.Remove(sprite.name);
-
+                // Texture ownership transfers to sprite
+                LoadedT2DSprites[sprite.texture.name] = newSprite;
                 spriteSetter.Invoke(spriteContainer, [newSprite]);
                 TrackT2DContainer(spriteContainer);
             }
         }
-        else
+        finally
         {
-            if (LoadedT2DSprites.ContainsKey(sprite.texture.name))
-            {
-                spriteSetter.Invoke(spriteContainer, [LoadedT2DSprites[sprite.texture.name]]);
-                TrackT2DContainer(spriteContainer);
-                return;
-            }
-            
-            Texture2D spriteTex = FindT2DSprite(sprite.texture.name);
-            if (spriteTex == null)
-                return;
-            spriteTex.name = sprite.texture.name;
-            Sprite newSprite = Sprite.Create(spriteTex, new Rect(0, 0, spriteTex.width, spriteTex.height), new Vector2(0.5f, 0.5f), sprite.pixelsPerUnit);
-            newSprite.name = sprite.name;
-            
-            // Texture ownership transfers to sprite
-            LoadedT2DSprites[sprite.texture.name] = newSprite;
-            spriteSetter.Invoke(spriteContainer, [newSprite]);
-            TrackT2DContainer(spriteContainer);
+            _handling = false;
         }
     }
 
