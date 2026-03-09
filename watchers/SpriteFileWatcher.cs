@@ -12,6 +12,7 @@ public class SpriteFileWatcher
     public FileSystemWatcher AtlasWatcher;
 
     public static bool ReloadSprites = false;
+    public static bool ReloadT2DSprites = false;
 
     public SpriteFileWatcher()
     {
@@ -46,7 +47,7 @@ public class SpriteFileWatcher
         if (pathParts[^2] == "T2D" || (pathParts.Length >= 3 && pathParts[^3] == "T2D"))
         {
             T2DHandler.InvalidateCache(Path.GetFileNameWithoutExtension(pathParts[^1]));
-            ReloadSprites = true;
+            ReloadT2DSprites = true;
             return;
         }
 

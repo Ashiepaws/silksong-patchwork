@@ -1,2 +1,4 @@
 /bin
 /obj
+Directory.Build.targets
+local.targets

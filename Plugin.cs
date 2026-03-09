@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using BepInEx;
@@ -56,10 +56,15 @@ public class Plugin : BaseUnityPlugin
                 var spriteCollections = Resources.FindObjectsOfTypeAll<tk2dSpriteCollectionData>();
                 foreach (var collection in spriteCollections)
                     SpriteDumper.DumpCollection(collection);
+                T2DHandler.DumpAllT2DSprites();
                 SceneTraverser.OnDumpCompleted();
                 Logger.LogInfo($"Finished dumping sprites for scene {scene.name}");
             };
         }
+
+        T2DHandler.PreloadAllT2DTextures();
+
+        SceneManager.sceneLoaded += (scene, mode) => T2DHandler.ApplyT2DReplacementsInScene();
 
         SceneManager.sceneLoaded += (scene, mode) => AudioHandler.Reload();
 
@@ -122,6 +127,11 @@ public class Plugin : BaseUnityPlugin
         {
             SpriteFileWatcher.ReloadSprites = false;
             SpriteLoader.Reload();
+        }
+
+        if (SpriteFileWatcher.ReloadT2DSprites)
+        {
+            SpriteFileWatcher.ReloadT2DSprites = false;
             T2DHandler.ReloadSpritesInScene();
         }
 
@@ -135,6 +145,11 @@ public class Plugin : BaseUnityPlugin
 
         if (++_frameCounter % 30 == 0)
         T2DHandler.CheckForUninitializedSprites();
+    }
+
+    private void LateUpdate()
+    {
+        T2DHandler.EnforceT2DReplacements();
     }
 
     private void OnGUI()
