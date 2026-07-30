@@ -47,6 +47,8 @@ public static class SpriteLoader
                 if (sheetResult.FromCustom)
                     hasCustomSpritesheets = true;
                 mat.mainTexture = sheetResult.Texture;
+                if (unreadableTex != null && mat.mainTexture != null)
+                    mat.mainTexture.name = unreadableTex.name;
                 if (!LoadedAtlasesTextures.ContainsKey(collection.name))
                     LoadedAtlasesTextures[collection.name] = new Dictionary<string, RenderTexture>();
                 LoadedAtlasesTextures[collection.name][matname] = mat.mainTexture as RenderTexture;
